@@ -3,13 +3,14 @@ name: secrets-management
 description: Get, put, list, and delete secrets in the local Fernet-encrypted OpenFused secrets store (~/.openfused/secrets.json). Use when managing OpenFused secrets through live UDFs.
 ---
 
-# secrets-management — project contract
+# secrets-management
 
 The local secrets store exposed as live UDFs. Reads and writes the **same**
 OS-keychain store as `LocalSecretsBackend` (`~/.openfused/secrets.json`, or the
 path named by `OPENFUSED_SECRETS_FILE` — used as the keychain account key) — so
-this surface, the `openfused secrets` CLI, the MCP secrets tools, and the
-in-sandbox `get_secret` shim all share one live store with no API layer in between.
+this surface, the `openfused secrets` CLI, and the in-sandbox `get_secret` shim
+all share one live store. An agent drives these UDFs over the local execution
+layer started with `openfused dev serve`.
 
 ## What this project is
 
@@ -22,16 +23,28 @@ The split is: **read via SQL** (`{{list}}`, `{{get}}`), **write via UDF**
 
 ## Access pattern
 
-```
-# Read — use the SQL endpoint
-POST /api/exec/sql?workspace=_core&project=secrets-management
-{"sql": "SELECT * FROM {{list}}"}
-{"sql": "SELECT * FROM {{get?name='openfused-token'}}"}
+Start the local execution layer. `openfused dev serve` binds a loopback server,
+prints ONE JSON handshake line, then runs in the foreground:
 
-# Write — use the UDF endpoint
-POST /api/exec/udf?workspace=_core&project=secrets-management
-{"udf": "put", "overrides": {"name": "openfused-token", "value": "s3cr3t"}}
-{"udf": "delete", "overrides": {"name": "openfused-token"}}
+```
+openfused dev serve
+{"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
+
+# Export the origin + token from that handshake line:
+ORIGIN=http://127.0.0.1:<port>
+TOKEN=<token>
+
+# Read — POST to the SQL endpoint
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=secrets-management" \
+  -d '{"sql": "SELECT * FROM {{list}}"}'
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=secrets-management" \
+  -d '{"sql": "SELECT * FROM {{get?name='\''openfused-token'\''}}"}'
+
+# Write — POST to the UDF endpoint
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=secrets-management" \
+  -d '{"udf": "put", "overrides": {"name": "openfused-token", "value": "s3cr3t"}}'
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=secrets-management" \
+  -d '{"udf": "delete", "overrides": {"name": "openfused-token"}}'
 ```
 
 Response shape: `{"data": <result>, "error": null}` on success;
@@ -45,7 +58,7 @@ lives in the **OS keychain**. The keychain item's coordinates are
 `service="openfused"`, `account=<resolved store path>`. The value is a JSON
 `name → value` map stored directly in the keychain item — no on-disk file.
 Each UDF therefore depends on `keyring` and inlines the exact keychain-access logic
-ported from `backends/local/secrets.py`. Keeping that logic identical is the interop
+of the local secrets backend. Keeping that logic identical is the interop
 contract: a value written by `put` must be readable by `LocalSecretsBackend.get_secret`,
 and vice-versa.
 
@@ -157,7 +170,7 @@ The local-backend venv materializes at
 
 - Each UDF is self-contained: the store helpers (`_store_path`, `_load`, `_save`, …)
   are duplicated in every `main.py` — no cross-UDF imports in the sandbox. Keep every
-  copy identical to the others and to `backends/local/secrets.py`.
+  copy identical to the others and to the local secrets backend.
 - UDF logic does not import `openfused.*` (the exec sandbox shadows the package with a
   shim that exposes only `get_secret`); reach the store directly via the inlined
   keychain helpers.

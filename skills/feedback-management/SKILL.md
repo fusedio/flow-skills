@@ -3,39 +3,32 @@ name: feedback-management
 description: Read AND write interaction cards — the typed, idempotent, resolvable HITL decisions an agent posts into a task thread — in the OpenFused App state store (~/.openfused/app/state.json) through live UDFs. The system of record for interaction cards. Use when working with OpenFused interaction cards, the inbox decision feed, or the app's feedback state.
 ---
 
-# feedback-management — project contract
+# feedback-management
 
 The App's **interaction-card** store exposed as live UDFs — the **durable system
-of record for interaction cards**. Reads AND writes `~/.openfused/app/state.json`
-— the same file the Express app owns — so agents and the UI share one live store
-without any API layer.
-
-> This `SKILL.md` is the project contract. It reaches agents two ways: at
-> runtime through the `get_project_context` MCP tool (and `OPENFUSED_PROJECT`
-> scoping), which returns this file inline; and as a Claude Code **skill** via
-> the `openfused-core` plugin manifest at `_core/.claude-plugin/plugin.json`
-> (`skills: "./"`), which materializes to `~/.openfused/core` — load it with
-> `claude --plugin-dir ~/.openfused/core`.
+of record for interaction cards**. Reads AND writes `~/.openfused/app/state.json`.
+These UDFs own that local store; an agent drives them over the local execution
+layer started with `openfused dev serve`.
 
 ## What this project is
 
 The system of record for **interaction cards** — the typed, idempotent,
-resolvable human-in-the-loop request an agent posts into a task thread
-(`spec/feedback/cards.md`) — and the home of the **inbox view** (a derived
-cross-task feed, not a fourth store). This is the fifth `_core` project, joining
+resolvable human-in-the-loop request an agent posts into a task thread — and the
+home of the **inbox view** (a derived cross-task feed, not a fourth store). This
+is the fifth `_core` project, joining
 task / run / secrets / agent-roster management. The other feedback primitive, the
 **`comment`** (every non-blocking note, incl. a `notify_user` FYI), is owned by the
-`add_comment` UDF in **`_core.task-management`** (`spec/feedback/consolidation.md`
-Phase 4) — the `inbox_view` here reads those comments from the one shared
+`add_comment` UDF in **`_core.task-management`** — the `inbox_view` here reads
+those comments from the one shared
 `state.json` (overview F1), so no cross-project call is needed.
 
 > **Phase 1 — system of record for cards.** Both the **read** side
 > (`list_cards`, `get_card`, `list_open_cards`) and the **write** side
 > (`create_card`, `resolve_card`, `cancel_task_cards`) live here. The app's
-> `inloop/src/server/store/cards.ts` is now a **thin async client** over these
-> UDFs (mirroring `store/runs.ts`) — the app no longer writes `state.json.cards`
+> card store is now a **thin async client** over these
+> UDFs — the app no longer writes `state.json.cards`
 > directly. The per-effect 422 resolve VALIDATION + the resolve input →
-> `{action, params}` `result` MAPPING still live in `routes/cards.ts`; the write
+> `{action, params}` `result` MAPPING still live in the app's card routes; the write
 > UDFs are dumb persisters. (`cancel_card` is gone — a wake-bearing `create_card`
 > supersedes the task's open ask in its place.)
 
@@ -49,7 +42,7 @@ Phase 4) — the `inbox_view` here reads those comments from the one shared
 > Phase-4 `notify_user` → comment swap, projected as Updates `message` rows) +
 > **derived** completion/failure (from run + task status; no longer stored) +
 > pending-triage tasks. The Express `GET /api/inbox` / `GET /api/projects/:name/inbox`
-> routes are thin callers of the `store/inbox.ts:inboxView` client; the run lifecycle
+> routes are thin callers of the `inboxView` client; the run lifecycle
 > does not mint `completion`/`failure` inbox items, `notify_user` writes a `notify`
 > comment via `add_comment` (not a stored `message`), and work-product review is a card
 > (not a stored `message`). A human dismiss/respond on a derived item / notify comment
@@ -61,25 +54,35 @@ UDF logic.
 
 The split is: **read via SQL or UDF** (`{{list_cards}}` / `{{list_open_cards}}`,
 or the `get_card` / `inbox_view` UDFs), **write via UDF** (`create_card` /
-`resolve_card` / `cancel_task_cards` via `POST /api/exec/udf`). Both endpoints are
-addressed with `?workspace=_core&project=feedback-management`.
+`resolve_card` / `cancel_task_cards`). Reads go via the `/api/exec/sql` endpoint
+and writes via the `/api/exec/udf` endpoint, both addressed with
+`?t=<token>&workspace=_core&project=feedback-management` — see the access pattern
+below.
 
 ## Access pattern
 
+Start the local execution layer. `openfused dev serve` binds a loopback server,
+prints ONE JSON handshake line, then runs in the foreground:
+
 ```
-# Read — use the SQL endpoint; {{list_cards}} is backed by the list_cards UDF
-POST /api/exec/sql?workspace=_core&project=feedback-management
-{"sql": "SELECT * FROM {{list_cards}} WHERE taskId = 'task_abc'"}
+openfused dev serve
+{"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
-# Read a single card — use the UDF endpoint
-POST /api/exec/udf?workspace=_core&project=feedback-management
-{"udf": "get_card", "overrides": {"id": "card_abc123"}}
+# Export the origin + token from that handshake line:
+ORIGIN=http://127.0.0.1:<port>
+TOKEN=<token>
 
-# Write — use the UDF endpoint; payload/result travel as JSON strings
-POST /api/exec/udf?workspace=_core&project=feedback-management
-{"udf": "create_card", "overrides": {"project": "p", "task_id": "task_abc",
-  "effect": "reply", "continuation_policy": "wake_assignee",
-  "payload": "{\"widget\":{\"type\":\"text\"}}", "source_run_id": "run_x"}}
+# Read — POST to the SQL endpoint; {{list_cards}} is backed by the list_cards UDF
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=feedback-management" \
+  -d '{"sql": "SELECT * FROM {{list_cards}} WHERE taskId = '\''task_abc'\''"}'
+
+# Read a single card — POST to the UDF endpoint
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=feedback-management" \
+  -d '{"udf": "get_card", "overrides": {"id": "card_abc123"}}'
+
+# Write — POST to the UDF endpoint; payload/result travel as JSON strings
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=feedback-management" \
+  -d '{"udf": "create_card", "overrides": {"project": "p", "task_id": "task_abc", "effect": "reply", "continuation_policy": "wake_assignee", "payload": "{\"widget\":{\"type\":\"text\"}}", "source_run_id": "run_x"}}'
 ```
 
 Response shape: `{"data": <result>, "error": null}` on success;
@@ -90,17 +93,16 @@ Response shape: `{"data": <result>, "error": null}` on success;
 Path: `~/.openfused/app/state.json` (default) or
 `$OPENFUSED_APP_DIR_STATE/state.json` when the env var names an app directory.
 Records are camelCase JSON, written with `indent=2, ensure_ascii=False`, via
-atomic `tmp + os.replace` — byte-compatible with the Express `store.ts`.
+atomic `tmp + os.replace`.
 
-This project owns the `state.json.cards` array — both reads and writes. The
-authoritative `InteractionCardRecord` shape lives in
-`inloop/src/server/store-core.ts` (lines 195–383); the read UDFs read it raw (no
-schema reconstruction) so they preserve every on-disk field, and the write UDFs
-build records in exactly that shape. Each write is a whole-document
+This project owns the `state.json.cards` array — both reads and writes. The read
+UDFs read the `InteractionCardRecord` raw (no schema reconstruction) so they
+preserve every on-disk field, and the write UDFs build records in exactly that
+shape. Each write is a whole-document
 read-modify-write that preserves every other noun, so `state.json` has multiple
 whole-document writers (the task UDFs, the run UDFs, these card UDFs, and the
-app's `save()` for the remaining nouns), reconciled **last-write-wins**
-(`spec/core.md` §8). The app (`store/cards.ts`) is now a thin async client; it
+app's `save()` for the remaining nouns), reconciled **last-write-wins**.
+The app's card store is now a thin async client; it
 does not write `cards[]` directly.
 
 ## Operations
@@ -115,7 +117,7 @@ list_cards(task: str = "") -> list[dict]
 ```
 
 Returns interaction-card records for `task`, **oldest-first by `createdAt`**
-(mirrors `store/cards.ts:listCards`). Empty `task` returns all cards across all
+(mirrors `listCards`). Empty `task` returns all cards across all
 tasks.
 
 SQL shorthand: `SELECT * FROM {{list_cards}}` (filter in SQL, or pass an
@@ -127,7 +129,7 @@ SQL shorthand: `SELECT * FROM {{list_cards}}` (filter in SQL, or pass an
 get_card(id: str = "") -> dict
 ```
 
-Returns the single card record for `id` (mirrors `store/cards.ts:getCard`), or
+Returns the single card record for `id` (mirrors `getCard`), or
 the not-found ack `{"ok": false, "error": "not found"}` for an unknown/empty id.
 
 ### list_open_cards
@@ -151,7 +153,7 @@ create_card(project, task_id, effect, continuation_policy, idempotency_key,
             summary, payload, created_by, source_run_id) -> dict
 ```
 
-Mints a fresh `pending` card and appends it (mirrors `store/cards.ts:createCard`
+Mints a fresh `pending` card and appends it (mirrors `createCard`
 + the route's §7 idempotency lookup). `payload` (the `{widget, effectArgs?}`
 object) arrives **JSON-encoded** and is parsed into the stored object. Empty
 `continuation_policy` → `wake_assignee`; the nullable string fields
@@ -165,8 +167,8 @@ Non-blocking (`none`-policy) cards are exempt. **Idempotency (§7):** when
 `idempotency_key` is set and a card with the same `(project, taskId, key)`
 already exists, the UDF returns that existing card **unchanged** (writes nothing,
 supersedes nothing); `sourceRunId` is excluded from the equivalence concern. The
-200-return-existing vs 409-conflict equivalence decision stays in
-`routes/cards.ts`. See `create_card/spec.md`.
+200-return-existing vs 409-conflict equivalence decision stays in the app's card
+routes. See `create_card/spec.md`.
 
 ### resolve_card
 
@@ -174,7 +176,7 @@ supersedes nothing); `sourceRunId` is excluded from the equivalence concern. The
 resolve_card(id, status, result, resolved_by) -> dict
 ```
 
-The single guarded `pending → terminal` flip (mirrors `store/cards.ts:resolveCard`,
+The single guarded `pending → terminal` flip (mirrors `resolveCard`,
 §4.6). The terminal `status` is one of `answered` / `superseded` / `cancelled`.
 `result` (the generic `{action, params}`) arrives **JSON-encoded** (empty →
 `null`). Guards on `status == "pending"`: a card that is unknown or already
@@ -182,7 +184,7 @@ terminal returns `{"ok": false, "error": "not found"}` / `{"ok": false, "error":
 "already resolved"}` and writes nothing (the caller maps that to a 409). On
 success sets `status`/`result`/`resolvedBy`/`resolvedAt=now`. **The UDF is a dumb
 persister** — the per-effect 422 VALIDATION + the resolve input → `{action,
-params}` `result` MAPPING stay in `routes/cards.ts`. See `resolve_card/spec.md`.
+params}` `result` MAPPING stay in the app's card routes. See `resolve_card/spec.md`.
 
 ### cancel_task_cards
 
@@ -192,7 +194,7 @@ cancel_task_cards(task) -> list[dict]
 
 Task-cancel cascade: sweeps EVERY `pending` card on `task` to `cancelled`
 (no result, no wake) in ONE whole-document write (mirrors
-`store/cards.ts:cancelTaskCards`, §5.1). Returns the cancelled records; an empty
+`cancelTaskCards`, §5.1). Returns the cancelled records; an empty
 sweep returns `[]` and writes nothing. See `cancel_task_cards/spec.md`.
 
 ### inbox_view
@@ -218,8 +220,7 @@ a derived item OR a notify comment (neither has a stored row) appends its
 synthetic/comment id to the flat `dismissedFeedbackKeys` set; the view excludes acked
 ids so they do not re-appear. See `inbox_view/spec.md`.
 
-The `InteractionCardRecord` (`spec/feedback/cards.md`,
-`inloop/src/server/store-core.ts` lines 195–383) — the typed, idempotent, resolvable
+The `InteractionCardRecord` — the typed, idempotent, resolvable
 HITL request:
 
 | Field | Type | Notes |
@@ -235,7 +236,7 @@ HITL request:
 | `payload` | dict | `{widget, effectArgs?}` — the agent-authored render surface + per-effect args |
 | `result` | dict \| null | Generic `{action, params}` result; null while pending |
 | `createdBy` | str | Posting agent's slug |
-| `sourceRunId` | str | The run that posted it (required — `app-runs.md` provenance) |
+| `sourceRunId` | str | The run that posted it (required provenance) |
 | `resolvedBy` | str \| null | `"user"` once resolved, null while pending |
 | `createdAt` | str | ISO-8601 timestamp |
 | `resolvedAt` | str \| null | ISO-8601 timestamp; null while pending |

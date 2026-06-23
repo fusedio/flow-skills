@@ -3,13 +3,12 @@ name: agents-management
 description: Create, read, update, delete, clone, and reset entries in the OpenFused App agent roster (~/.openfused/app/agents/). Use when managing the OpenFused agent roster.
 ---
 
-# agents-management — project contract
+# agents-management
 
 The App **agent roster** exposed as live UDFs. These UDFs are the **sole owner**
-of the file tree `~/.openfused/app/agents/`: the `openfused inloop` app's
-`/api/agents` routes delegate to them rather than running their own CRUD
-(`spec/app-teams.md` §9), so an agent (or the dev-serve client) and the roster UI
-share one live roster without any API layer in between.
+of the file tree `~/.openfused/app/agents/`: they own this local roster store,
+and an agent drives them over the local execution layer started with
+`openfused dev serve`.
 
 ## What this project is
 
@@ -20,21 +19,31 @@ adapter, model, prompt, and a `builtin` provenance flag. Live runs, sessions, an
 per-agent cost stats are **out of scope** (those live in the app's `state.json`,
 covered by the `task-management` project).
 
-The split is: **read via SQL** (any query over `{{read}}`), **write via UDF** (any
-mutation via `POST /api/exec/udf`). Both endpoints are addressed with
-`?workspace=_core&project=agents-management`.
+The split is: **read via SQL** (any query over `{{read}}`, via the `/api/exec/sql`
+endpoint), **write via UDF** (any mutation, via the `/api/exec/udf` endpoint).
+Both endpoints are addressed with `?t=<token>&workspace=_core&project=agents-management`
+— see the access pattern below.
 
 ## Access pattern
 
-```
-# Read — use the SQL endpoint; {{read}} is backed by the read UDF
-POST /api/exec/sql?workspace=_core&project=agents-management
-{"sql": "SELECT slug, name, role, builtin FROM {{read}}"}
+Start the local execution layer. `openfused dev serve` binds a loopback server,
+prints ONE JSON handshake line, then runs in the foreground:
 
-# Write — use the UDF endpoint
-POST /api/exec/udf?workspace=_core&project=agents-management
-{"udf": "create", "overrides": {"name": "Geo Wizard", "title": "Geospatial Engineer",
-                                "role": "engineer", "description": "...", "prompt": "..."}}
+```
+openfused dev serve
+{"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
+
+# Export the origin + token from that handshake line:
+ORIGIN=http://127.0.0.1:<port>
+TOKEN=<token>
+
+# Read — POST to the SQL endpoint; {{read}} is backed by the read UDF
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=agents-management" \
+  -d '{"sql": "SELECT slug, name, role, builtin FROM {{read}}"}'
+
+# Write — POST to the UDF endpoint
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=agents-management" \
+  -d '{"udf": "create", "overrides": {"name": "Geo Wizard", "title": "Geospatial Engineer", "role": "engineer", "description": "...", "prompt": "..."}}'
 ```
 
 Response shape: `{"data": <result>, "error": null}` on success;
@@ -60,9 +69,7 @@ Response shape: `{"data": <result>, "error": null}` on success;
   carries no id. `createdAt` is the `AGENTS.md` file mtime.
 
 These UDFs are the **canonical** implementation of the on-disk format + the
-CRUD/seed semantics. The former TypeScript counterparts (`team.ts` format helpers
-and `store/roster.ts` CRUD) are deleted under the roster migration
-(`spec/app-teams.md` §9); the app's `/api/agents*` routes now delegate to these
+CRUD/seed semantics; the app's `/api/agents*` routes now delegate to these
 UDFs over its shared `dev serve`. Last-write-wins is accepted (no in-UDF locking);
 the app serializes its own roster writes with a process-side mutex, so the only
 residual clobber window is between two concurrent UDF callers.
@@ -70,8 +77,7 @@ residual clobber window is between two concurrent UDF callers.
 ## Default personas + the seed ledger
 
 Five defaults ship in `scripts/seed_agents.json` — the **sole source of truth**
-for the default personas (`roles.ts` `DEFAULT_AGENTS` and its parity test are
-deleted under the §9 migration): `architect`, `project-manager`, `data-engineer`,
+for the default personas: `architect`, `project-manager`, `data-engineer`,
 `data-analyst`, `data-qa`. Every UDF seeds the roster first (idempotent, additive),
 exactly like the app's former `seedDefaultRoster`:
 

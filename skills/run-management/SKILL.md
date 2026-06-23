@@ -3,13 +3,13 @@ name: run-management
 description: Read and write agent run records (and read per-run transcripts) in the OpenFused App store. The durable system of record for runs. Use when inspecting or persisting OpenFused agent run state — status, costs, prompts, transcripts.
 ---
 
-# run-management — project contract
+# run-management
 
 The App run store exposed as live UDFs — the **durable system of record for run
 records**. Reads and writes `~/.openfused/app/state.json` (run records) and reads
-`~/.openfused/app/runs/<runId>.ndjson` (per-run transcripts) — the same files the
-Express app owns — so agents and the UI share one live store without any API
-layer.
+`~/.openfused/app/runs/<runId>.ndjson` (per-run transcripts). These UDFs own that
+local store; an agent drives them over the local execution layer started with
+`openfused dev serve`.
 
 ## What this project is
 
@@ -43,11 +43,11 @@ app-side while its *record* is owned here. The `openfused inloop` app routes its
 reads **and** writes through these UDFs over the shared `dev serve`
 (`createRun`→`create`, `markRunStarted`→`mark_started`, `finishRun`→`finish`,
 `setRunPrompt`→`set_prompt`, boot `recoverOrphans`'s two run sweeps→`fail_started`
-+ `cancel_queued`; `inloop/src/server/store/runs.ts`).
++ `cancel_queued`).
 Like the task UDFs, each write is a whole-document read-modify-write that
 preserves every other noun, so `state.json` has three whole-document writers (the
 task UDFs, the run UDFs, and the app's `save()` for the remaining nouns),
-reconciled last-write-wins (see `spec/core.md` §8).
+reconciled last-write-wins.
 
 `transcript` stays read-only: the NDJSON log is appended line-by-line by the live
 run as events stream, which is an app-side effect, not a record write. This
@@ -58,16 +58,27 @@ participates in the live append path, so the hot-path read-only invariant holds.
 
 ## Access pattern
 
-```
-# read — use the SQL endpoint; {{read}} is backed by the read UDF
-POST /api/exec/sql?workspace=_core&project=run-management
-{"sql": "SELECT * FROM {{read}} WHERE taskId = 'task_…'"}
+Start the local execution layer. `openfused dev serve` binds a loopback server,
+prints ONE JSON handshake line, then runs in the foreground:
 
-# transcript / writes — use the UDF endpoint (run-scoped or single-record
+```
+openfused dev serve
+{"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
+
+# Export the origin + token from that handshake line:
+ORIGIN=http://127.0.0.1:<port>
+TOKEN=<token>
+
+# read — POST to the SQL endpoint; {{read}} is backed by the read UDF
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=run-management" \
+  -d '{"sql": "SELECT * FROM {{read}} WHERE taskId = '\''task_…'\''"}'
+
+# transcript / writes — POST to the UDF endpoint (run-scoped or single-record
 # results, not tabular)
-POST /api/exec/udf?workspace=_core&project=run-management
-{"udf": "transcript", "overrides": {"run_id": "run_…"}}
-{"udf": "finish", "overrides": {"id": "run_…", "status": "completed"}}
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=run-management" \
+  -d '{"udf": "transcript", "overrides": {"run_id": "run_…"}}'
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=run-management" \
+  -d '{"udf": "finish", "overrides": {"id": "run_…", "status": "completed"}}'
 ```
 
 Response shape: `{"data": <result>, "error": null}` on success;
@@ -137,8 +148,7 @@ create(id: str = "", task_id: str = "", prompt: str = "") -> dict
 Appends a new run with the **caller-supplied `id`** (the app mints `run_<hex>`
 before persisting because it also keys an in-memory live buffer by that id — the
 UDF does not mint one). `status="queued"`, `createdAt=now`, every other field
-null. Returns the created record. Mirrors `createRun` in
-`inloop/src/server/store/runs.ts`.
+null. Returns the created record. Mirrors `createRun`.
 
 ### mark_started
 
@@ -229,8 +239,7 @@ that already exists, so it cannot collide with a live run's log.
   `update_status`): no state-machine validation in the UDF — the app gates
   legality before calling.
 - UDF logic is stdlib-only; no imports from `openfused.*` (the exec sandbox
-  shadows the package with a shim). Reach the App files directly. `RunStore`
-  (inloop/src/server/store/runs.ts) is **not importable in-sandbox**.
+  shadows the package with a shim). Reach the App files directly.
 - All params are strings.
 
 ## Rendering as a `sql-table` widget

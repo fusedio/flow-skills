@@ -3,18 +3,11 @@ name: task-management
 description: Read, create, assign, and re-status tasks in the OpenFused App task store (~/.openfused/app/state.json) through live UDFs, and render the standalone task-board widget. Use when working with OpenFused tasks, the kanban/task board, or the app's task state.
 ---
 
-# task-management — project contract
+# task-management
 
-The App task store exposed as live UDFs. Reads and writes
-`~/.openfused/app/state.json` — the same file the Express app owns — so agents
-and the UI share one live store without any API layer.
-
-> This `SKILL.md` is the project contract. It reaches agents two ways: at
-> runtime through the `get_project_context` MCP tool (and `OPENFUSED_PROJECT`
-> scoping), which returns this file inline; and as a Claude Code **skill** via
-> the `openfused-core` plugin manifest at `_core/.claude-plugin/plugin.json`
-> (`skills: "./"`), which materializes to `~/.openfused/core` — load it with
-> `claude --plugin-dir ~/.openfused/core`.
+The App task store exposed as live UDFs. These UDFs own the local task store at
+`~/.openfused/app/state.json`; an agent drives them over the local execution
+layer started with `openfused dev serve`.
 
 ## What this project is
 
@@ -24,20 +17,31 @@ manage comments (`list_comments`, `add_comment`), and one that seeds whole
 collections verbatim (`bulk_seed`). Every UDF touches `state.json` directly with
 stdlib; no third-party imports in UDF logic.
 
-The split is: **read via SQL** (any query over `{{read}}`), **write via UDF**
-(any mutation via `POST /api/exec/udf`). Both endpoints are addressed with
-`?workspace=_core&project=task-management`.
+The split is: **read via SQL** (any query over `{{read}}`, via the `/api/exec/sql`
+endpoint), **write via UDF** (any mutation, via the `/api/exec/udf` endpoint).
+Both endpoints are addressed with `?t=<token>&workspace=_core&project=task-management`
+— see the access pattern below.
 
 ## Access pattern
 
-```
-# Read — use the SQL endpoint; {{read}} is backed by the read UDF
-POST /api/exec/sql?workspace=_core&project=task-management
-{"sql": "SELECT * FROM {{read}} WHERE project = 'my-project'"}
+Start the local execution layer. `openfused dev serve` binds a loopback server,
+prints ONE JSON handshake line, then runs in the foreground:
 
-# Write — use the UDF endpoint
-POST /api/exec/udf?workspace=_core&project=task-management
-{"udf": "create", "overrides": {"project": "my-project", "title": "hello"}}
+```
+openfused dev serve
+{"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
+
+# Export the origin + token from that handshake line:
+ORIGIN=http://127.0.0.1:<port>
+TOKEN=<token>
+
+# Read — POST to the SQL endpoint; {{read}} is backed by the read UDF
+curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=task-management" \
+  -d '{"sql": "SELECT * FROM {{read}} WHERE project = '\''my-project'\''"}'
+
+# Write — POST to the UDF endpoint
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=task-management" \
+  -d '{"udf": "create", "overrides": {"project": "my-project", "title": "hello"}}'
 ```
 
 Response shape: `{"data": <result>, "error": null}` on success;
@@ -48,12 +52,11 @@ Response shape: `{"data": <result>, "error": null}` on success;
 Path: `~/.openfused/app/state.json` (default) or
 `$OPENFUSED_APP_DIR_STATE/state.json` when the env var names an app directory.
 Records are camelCase JSON, written with `indent=2, ensure_ascii=False`, via
-atomic `tmp + os.replace` — byte-compatible with the Express `store.ts`.
+atomic `tmp + os.replace`.
 
 Two-writer last-write-wins clobber is accepted in this POC (locking is out of
-scope). `TasksStore` in `inloop/src/server/tasks.py` is **not importable in-sandbox**
-because the exec runtime injects an `openfused` shim that shadows the real
-package; UDFs therefore reach `state.json` directly.
+scope). The exec runtime injects an `openfused` shim that shadows the real
+package, so UDFs reach `state.json` directly.
 
 ## Operations
 
@@ -155,8 +158,8 @@ add_comment(task_id: str = "", author: str = "", body: str = "", kind: str = "",
 
 Appends a new `cmt_<12hex>` comment to `state.json`. Returns the core 5-field
 record: `{id, taskId, author, body, createdAt}`. A non-empty `kind` (e.g.
-`notify`, marking a `notify_user` FYI the inbox Updates feed surfaces —
-`spec/feedback/consolidation.md` Phase 4) and a non-empty `widget` (a JSON-UI
+`notify`, marking a `notify_user` FYI the inbox Updates feed surfaces) and a
+non-empty `widget` (a JSON-UI
 config JSON string, parsed and stored as the object) are added **only when set**,
 so a plain thread `note` stays byte-identical to the pre-Phase-4 5-field shape.
 

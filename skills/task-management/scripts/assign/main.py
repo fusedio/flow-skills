@@ -23,7 +23,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -70,7 +70,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -143,7 +143,7 @@ def _save_doc(doc: dict) -> None:
 def assign(id: str = "", agent_id: str = "") -> dict:
     """Set agentId on a task and promote pending → todo.
 
-    Mirrors ``TasksStore.assign_task`` in ``tasks.py``.
+    Mirrors ``TasksStore.assign_task``.
 
     Args:
         id: the task id to assign.

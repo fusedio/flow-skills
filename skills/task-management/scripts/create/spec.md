@@ -52,5 +52,5 @@ Sequences are independent per project.
 - **Depth-ceiling check**: `TasksStore.create_task` raises `TaskDepthExceededError`
   when the parent is already at `MAX_TASK_DEPTH`.  This guard is omitted here to
   keep the UDF stdlib-only.  Upgrade path: port `task_depth` + `would_exceed_depth`
-  from `tasks.py` into the inline helpers, or add a shared helper module once the
+  into the inline helpers, or add a shared helper module once the
   POC graduates to a proper package.

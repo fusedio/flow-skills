@@ -2,7 +2,7 @@
 
 Sets the `status` field on a task record unconditionally.
 
-Mirrors `TasksStore.update_task_status` in `tasks.py`.
+Mirrors `TasksStore.update_task_status`.
 
 ## Inputs (all strings)
 

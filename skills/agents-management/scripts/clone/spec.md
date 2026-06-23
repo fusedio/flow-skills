@@ -1,8 +1,7 @@
 # clone
 
 Create a custom (`builtin: false`) editable copy of any persona — the edit path
-for a built-in default. Mirrors `cloneAgent` in
-`inloop/src/server/store/roster.ts`.
+for a built-in default. Mirrors `cloneAgent`.
 
 ## Inputs
 

@@ -2,16 +2,15 @@
 
 Assemble the human **inbox feed** — the derived cross-task attention queue — from
 the live app state file (`~/.openfused/app/state.json`, or the directory named by
-`OPENFUSED_APP_DIR_STATE`). The inbox is a **view**, not a fourth store
-(`spec/feedback/consolidation.md` Phase 5, `spec/feedback/contract.md`): this UDF
-replaces the hand-assembly the Express routes did in `routes/inbox.ts`, and
+`OPENFUSED_APP_DIR_STATE`). The inbox is a **view**, not a fourth store: this UDF
+replaces the hand-assembly the Express routes did, and
 returns the **same `{items, pending}` shape** so the UI is unchanged.
 
 Because every `_core` UDF reads the one shared `state.json` (overview F1), this
 single read joins `cards`, `comments`, `tasks`, and `runs` with no cross-project
 call. There is **no `inbox[]` array** — the inbox owns no stored record; every row
 is derived/projected (the array, its CRUD, and the legacy stored item shapes are
-retired; `spec/feedback/consolidation.md`).
+retired).
 
 ## Inputs
 
@@ -44,10 +43,10 @@ Each `items` row carries: `id`, `project`, `type`
    `widget` comes from the payload — the agent-authored render surface owns all
    content, so `details`/`diffPaths` are always `null`. The client resolves these
    through the **card route**, not the inbox respond route. (The pending-question
-   projection that lived in `routes/inbox.ts`, now server-side.)
+   projection, now server-side.)
 2. **Work-product review cards** — pending cards whose
-   `effect == "review_work_product"` (the `publish_work_product` fold,
-   `spec/app-artifacts.md` §4). Projected as a `type:"message"` Updates row
+   `effect == "review_work_product"` (the `publish_work_product` fold).
+   Projected as a `type:"message"` Updates row
    carrying `sourceCardId` + the full `card` (so the UI renders the interactive card
    and resolves it through the **card route**, exactly like a card-view question, but
    in the Updates tab). `workProductId` is copied from `payload.effectArgs.workProductId`
@@ -81,7 +80,7 @@ respond/dismiss routes can recover the run + task.
 
 Because a derived item has no stored row, a human DISMISS / RESPOND records the
 synthetic id in the flat **`dismissedFeedbackKeys: string[]`** state field
-(written by `routes/inbox.ts` via `acknowledgeFeedbackKey`). This view EXCLUDES
+(written via `acknowledgeFeedbackKey`). This view EXCLUDES
 any derived item / notify comment whose synthetic id (`derived:<type>:<runId>` or
 `cmt_<id>`) is present in `dismissedFeedbackKeys`, so a dismissed/answered item
 does not re-appear on the next view. The acked set's source is
@@ -99,7 +98,7 @@ task is `in_progress`, so no `failure` derives).
 ## Source
 
 Reads `state.json` directly with stdlib (`json`, `os`); no third-party imports.
-State path resolution mirrors `tasks.py:_default_app_dir`:
+State path resolution:
 - `OPENFUSED_APP_DIR_STATE` is a **directory** (not a file path); when set, used verbatim.
 - Otherwise: `~/.openfused/app`.
 - State file is always `<app_dir>/state.json`.
@@ -112,5 +111,4 @@ Missing file or JSON parse errors return the empty feed `{"items": [], "pending"
 - Stdlib-only; no third-party packages.
 - Parameterized via `@udf def inbox_view(project: str = "")` (the injected decorator form).
 - Preserves raw on-disk camelCase keys; does not reconstruct via any schema model.
-- Read-only. Returns the production `{items, pending}` shape; the Express inbox
-  routes are thin callers (`store/inbox.ts:inboxView`).
+- Read-only. Returns the production `{items, pending}` shape.

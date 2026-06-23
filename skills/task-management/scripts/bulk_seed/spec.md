@@ -7,8 +7,8 @@ given by `OPENFUSED_APP_DIR_STATE`). This is the restore/seed counterpart of
 supplied record exactly — and it is **idempotent by `id`**.
 
 It is the only supported way to seed app-state from host Python: seeding goes
-through this UDF (the sole writer of the `tasks`/`comments` collections,
-spec/core.md §6), never a direct file write, so the storage backing stays
+through this UDF (the sole writer of the `tasks`/`comments` collections),
+never a direct file write, so the storage backing stays
 swappable behind the UDF contract.
 
 ## Inputs (all strings, JSON-encoded)

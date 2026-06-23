@@ -3,8 +3,7 @@
 Boot orphan recovery's queued-run sweep: cancels every run currently
 `status == "queued"`.
 
-The sibling of `fail_started` for the queued lane of `recoverOrphans` in
-`inloop/src/server/store/runs.ts`. A run still `"queued"` at boot was minted but
+The sibling of `fail_started` for the queued lane of `recoverOrphans`. A run still `"queued"` at boot was minted but
 never launched — it only ever sat in the in-process queue, which the dead process
 took with it. It never ran, so it is **cancelled**, not failed (`fail_started`
 fails genuinely-live `"started"` runs). Boot redispatch re-mints a fresh queued

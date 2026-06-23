@@ -32,7 +32,7 @@ A list of task records (raw camelCase dicts from state.json), **newest-first by 
 ## Source
 
 Reads `state.json` directly with stdlib (`json`, `os`); no third-party imports.
-State path resolution mirrors `tasks.py:_default_app_dir`:
+State path resolution:
 - `OPENFUSED_APP_DIR_STATE` is a **directory** (not a file path); when set, used verbatim.
 - Otherwise: `~/.openfused/app`.
 - State file is always `<app_dir>/state.json`.

@@ -9,7 +9,7 @@ exists in the collection is skipped (no duplicate, no overwrite).
 
 This is the only supported way to seed app-state from host Python: it goes through
 the ``task-management`` UDF layer (the sole writer of the ``tasks``/``comments``
-collections, spec/core.md §6) rather than a direct file write, keeping the storage
+collections) rather than a direct file write, keeping the storage
 backing swappable behind the UDF contract.
 
 Writes ``<app_dir>/state/tasks.json`` and ``<app_dir>/state/comments.json`` (or the
@@ -35,7 +35,7 @@ import fcntl
 import json
 import os
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -82,7 +82,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")

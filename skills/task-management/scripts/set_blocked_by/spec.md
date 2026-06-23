@@ -2,7 +2,7 @@
 
 Sets the `blockedBy` edge on a task record.
 
-Mirrors `TasksStore.set_blocked_by` in `tasks.py` minus cycle detection.
+Mirrors `TasksStore.set_blocked_by` minus cycle detection.
 
 ## Inputs (all strings)
 
@@ -53,5 +53,5 @@ The UDF returns an informative ack dict instead so callers can detect the miss.
 - **Cycle detection**: `TasksStore.set_blocked_by` raises `BlockerCycleError`
   when the proposed `blockedBy` list would form a dependency cycle.  This guard
   is omitted here to keep the UDF stdlib-only.  Upgrade path: port
-  `_would_form_blocker_cycle_in` from `tasks.py` into the inline helpers, or add
+  `_would_form_blocker_cycle_in` into the inline helpers, or add
   a shared helper module once the POC graduates to a proper package.

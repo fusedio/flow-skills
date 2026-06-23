@@ -1,7 +1,6 @@
 # reset
 
-Restore a default persona to its shipped seed. Mirrors `resetAgent` in
-`inloop/src/server/store/roster.ts`.
+Restore a default persona to its shipped seed. Mirrors `resetAgent`.
 
 ## Inputs
 
@@ -22,7 +21,7 @@ editable-defaults safety net).
 ## Source
 
 Reads the slug's seed from `scripts/seed_agents.json` (the 5 defaults, transcribed
-verbatim from `inloop/src/server/roles.ts`), then writes
+verbatim), then writes
 `<agents>/<slug>/AGENTS.md` (+ sidecar, `builtin: true`). YAML via PyYAML.
 
 `createdAt` is derived from the file mtime (never persisted), so it is not

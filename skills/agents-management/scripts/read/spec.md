@@ -32,8 +32,8 @@ A list of `AgentRecord` dicts (slug-sorted):
 ## Source
 
 Reads `<agents>/<slug>/AGENTS.md` (YAML frontmatter + prompt body) merged with the
-`<agents>/.openfused.yaml` sidecar (adapter/model/builtin), mirroring `loadRoster`
-in `inloop/src/server/team.ts`. YAML via PyYAML (declared in `scripts/pyproject.toml`).
+`<agents>/.openfused.yaml` sidecar (adapter/model/builtin), mirroring `loadRoster`.
+YAML via PyYAML (declared in `scripts/pyproject.toml`).
 A malformed agent file is skipped, not fatal (same as the app). Missing roster dir
 → `[]`.
 

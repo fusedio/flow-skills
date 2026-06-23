@@ -21,7 +21,7 @@ card never blocks and is excluded.
 
 A list of interaction-card records (raw camelCase dicts from `state.json.cards`),
 **oldest-first by `createdAt`**. Each record is the `InteractionCardRecord` shape
-`list_cards` documents (see `inloop/src/server/store-core.ts` lines 195–383).
+`list_cards` documents.
 
 Filter applied (in order):
 1. `status == "pending"`,
@@ -32,7 +32,7 @@ Filter applied (in order):
 ## Source
 
 Reads `state.json` directly with stdlib (`json`, `os`); no third-party imports.
-State path resolution mirrors `tasks.py:_default_app_dir`:
+State path resolution:
 - `OPENFUSED_APP_DIR_STATE` is a **directory** (not a file path); when set, used verbatim.
 - Otherwise: `~/.openfused/app`.
 - State file is always `<app_dir>/state.json`.

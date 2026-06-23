@@ -2,7 +2,7 @@
 
 Returns whether a task has an open report that IS its completion report. When it
 does, the system skips the auto `completion` item. Mirrors
-`hasUnresolvedMessage` in `app/src/server/store/inbox.ts`.
+`hasUnresolvedMessage`.
 
 Reads `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox

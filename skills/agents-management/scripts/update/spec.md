@@ -1,7 +1,6 @@
 # update
 
-Patch fields on an existing persona. Mirrors `updateAgent` in
-`inloop/src/server/store/roster.ts`.
+Patch fields on an existing persona. Mirrors `updateAgent`.
 
 ## Inputs
 

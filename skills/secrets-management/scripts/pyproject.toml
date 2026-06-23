@@ -10,8 +10,8 @@ dependencies = [
     "duckdb>=1.5.0",
     "pandas>=2.0.0",
     "pyarrow>=14.0.0",
-    # The secrets UDFs read/write the SAME OS keychain store as LocalSecretsBackend
-    # (backends/local/secrets.py). They share the keychain-blob model (no Fernet file),
+    # The secrets UDFs read/write the SAME OS keychain store as LocalSecretsBackend.
+    # They share the keychain-blob model (no Fernet file),
     # so keyring is the only secrets dependency. Floor matches the repo root pyproject.toml.
     "keyring>=24",
     # File-based keyring backend available in the subprocess venv so the e2e test can

@@ -3,7 +3,7 @@
 Patches a terminal transition onto an existing run record and stamps
 `finishedAt` to the current UTC time.
 
-Mirrors `finishRun` in `inloop/src/server/store/runs.ts`.
+Mirrors `finishRun`.
 
 ## Inputs (all strings)
 
@@ -35,7 +35,7 @@ response, so no separate read is needed on the finish hot path.
 {"ok": false, "error": "not found"}
 ```
 
-(`finishRun` in `runs.ts` is a silent no-op on a missing run; the UDF returns an
+(`finishRun` is a silent no-op on a missing run; the UDF returns an
 informative ack so callers can detect the miss without exception handling.)
 
 ## Behaviour

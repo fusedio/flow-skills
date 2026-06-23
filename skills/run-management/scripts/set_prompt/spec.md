@@ -2,8 +2,8 @@
 
 Updates the stored `prompt` on a not-yet-finished run.
 
-Mirrors `setRunPrompt` in `inloop/src/server/store/runs.ts` — used when a queued
-resume accumulates further human follow-ups (`spec/app-runs.md` §13.2) so the
+Mirrors `setRunPrompt` — used when a queued
+resume accumulates further human follow-ups so the
 prompt the UI shows matches the one the agent will receive at launch.
 
 ## Inputs (all strings)
@@ -26,7 +26,7 @@ the `create` UDF output) with `prompt` set to the new value.
 {"ok": false, "error": "not found"}
 ```
 
-(`setRunPrompt` in `runs.ts` is a silent no-op on a missing run; the UDF returns
+(`setRunPrompt` is a silent no-op on a missing run; the UDF returns
 an informative ack instead.)
 
 ## Behaviour

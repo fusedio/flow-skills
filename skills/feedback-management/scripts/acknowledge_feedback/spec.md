@@ -1,8 +1,7 @@
 # acknowledge_feedback
 
 Dedup-appends a synthetic feedback id to the flat `dismissedFeedbackKeys` ACK
-ledger — idempotent, write-only-on-change. Mirrors `acknowledgeFeedbackKey` in
-`app/src/server/store/inbox.ts`.
+ledger — idempotent, write-only-on-change. Mirrors `acknowledgeFeedbackKey`.
 
 Reads/writes `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox

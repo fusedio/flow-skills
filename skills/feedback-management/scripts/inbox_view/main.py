@@ -3,11 +3,10 @@
 Reads ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
 
-This is the **inbox view** (``spec/feedback/consolidation.md`` Phase 5 /
-``spec/feedback/contract.md``): the inbox is a *derivation*, not a fourth store.
+This is the **inbox view**: the inbox is a *derivation*, not a fourth store.
 It returns the SAME ``{items, pending}`` shape the Express routes
 ``GET /api/inbox`` (global) and ``GET /api/projects/:name/inbox`` (drill-in)
-returned by hand-assembly (``routes/inbox.ts``), so the UI is unchanged.
+returned by hand-assembly, so the UI is unchanged.
 
 The inbox owns **no stored array** — every row is derived/projected. It assembles
 five sources from the ONE shared ``state.json`` (F1 — every ``_core`` UDF reads the
@@ -17,12 +16,12 @@ same file, so there is no cross-project call):
    (``continuationPolicy == "wake_assignee"``) whose ``effect`` is NOT
    ``review_work_product`` (i.e. ``reply`` / ``approval_gate``), projected as a
    read-only ``type:"question"`` view carrying ``sourceCardId`` + the full
-   ``card`` (the pending-question projection, formerly in ``routes/inbox.ts``,
+   ``card`` (the pending-question projection,
    now server-side here). The client resolves these through the card route, not
    the inbox respond route.
 2. **Work-product review cards** — pending cards whose
-   ``effect == "review_work_product"`` (the ``publish_work_product`` fold,
-   ``spec/app-artifacts.md`` §4), projected as ``type:"message"`` Updates rows
+   ``effect == "review_work_product"`` (the ``publish_work_product`` fold),
+   projected as ``type:"message"`` Updates rows
    carrying ``sourceCardId`` + the full ``card`` so the UI renders the interactive
    card and resolves it through the card route. Non-blocking
    (``continuationPolicy: "none"``), so they never appear in source 1. An open
@@ -37,12 +36,10 @@ same file, so there is no cross-project call):
    derived items, source 4/5).
 4. **Derived ``completion`` items** — for a task whose LATEST run is terminal
    ``completed`` and whose ``status`` is ``completed`` with no open ``notify``
-   comment (mirrors the mint condition the run launcher used in
-   ``runs/launcher.ts`` — a ``notify_user`` IS the completion report). Synthetic
+   comment (a ``notify_user`` IS the completion report). Synthetic
    id ``derived:completion:<runId>``.
 5. **Derived ``failure`` items** — for a task whose LATEST run is terminal
-   ``failed`` and whose ``status`` is ``failed`` (mirrors ``runs/launcher.ts`` +
-   ``runs/lifecycle.ts:failRunCleanly``). Synthetic id ``derived:failure:<runId>``.
+   ``failed`` and whose ``status`` is ``failed``. Synthetic id ``derived:failure:<runId>``.
 
 Completion/failure are NO LONGER stored (the run lifecycle stopped minting them);
 they are derived here from run + task ``status``. A human DISMISS / RESPOND on a
@@ -50,7 +47,7 @@ derived item / notify comment appends its synthetic id (``derived:<type>:<runId>
 or ``cmt_<id>``) to the flat ``dismissedFeedbackKeys`` state field (written by the
 respond/dismiss routes via ``acknowledgeFeedbackKey``); this view EXCLUDES any
 derived item / notify comment whose id is in that set, so a dismissed item does not
-re-appear on the next view (``spec/feedback/contract.md`` — the derived-dismissal
+re-appear on the next view (the derived-dismissal
 handling). The key is run-scoped, so a re-run mints a new id NOT in the set and the
 outcome resurfaces.
 
@@ -73,7 +70,7 @@ import fcntl
 import json
 import os
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -120,7 +117,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -244,7 +241,7 @@ def _acknowledged_feedback_keys(doc: dict) -> set:
 def _card_question_view(card: dict, by_id: dict) -> dict:
     """Project a pending wake-bearing card into a `question` inbox view.
 
-    The pending-question projection (formerly in `routes/inbox.ts`, now here): the
+    The pending-question projection: the
     card's `summary` is the question body (the only human label); the `widget` is
     the agent-authored render surface, which owns ALL content — there is no
     server-side `details`/`diffPaths` projection. Carries `sourceCardId` + the
@@ -279,7 +276,7 @@ def _card_question_view(card: dict, by_id: dict) -> dict:
 def _is_work_product_review_card(card: dict) -> bool:
     """A pending card whose ``effect`` is ``review_work_product``.
 
-    The publish_work_product fold (``spec/app-artifacts.md`` §4): a review card is
+    The publish_work_product fold: a review card is
     a system-posted card with ``effect == "review_work_product"``. These are
     non-blocking (``continuationPolicy: "none"``), so they never surface as a
     card-view question (source 1) — only as an Updates review row (source 2).
@@ -484,7 +481,7 @@ def inbox_view(project: str = "") -> dict:
             body = (run.get("errorMessage") or "").strip() or "run failed"
             items.append(_derived_item("failure", run, task, body))
 
-    # Newest-first by createdAt (mirrors routes/inbox.ts: b.createdAt.localeCompare(a)).
+    # Newest-first by createdAt.
     items.sort(key=lambda i: i.get("createdAt") or "", reverse=True)
 
     pending = [

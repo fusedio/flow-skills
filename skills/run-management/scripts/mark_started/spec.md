@@ -2,7 +2,7 @@
 
 Promote a run from `queued` to `started` — the launch transition.
 
-Mirrors `markRunStarted(id)` in `inloop/src/server/store/runs.ts`. A run is minted
+Mirrors `markRunStarted(id)`. A run is minted
 `"queued"` by `create` and stays queued while it waits for a concurrency slot or a
 dependency blocker; the launcher calls this the moment the agent process actually
 goes live, so a run reads `"started"` (the only live state) strictly while it runs.

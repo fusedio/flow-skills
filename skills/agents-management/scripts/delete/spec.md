@@ -1,7 +1,6 @@
 # delete
 
-Remove a persona from the live app roster. Mirrors `deleteAgent` in
-`inloop/src/server/store/roster.ts`.
+Remove a persona from the live app roster. Mirrors `deleteAgent`.
 
 ## Inputs
 

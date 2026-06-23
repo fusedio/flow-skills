@@ -13,8 +13,7 @@ Return a single interaction-card record by id from the live app state file
 ## Output
 
 The matching interaction-card record (raw camelCase dict from `state.json.cards`)
-— the same `InteractionCardRecord` shape `list_cards` documents (see
-`inloop/src/server/store-core.ts` lines 195–383). Mirrors `store/cards.ts:getCard`.
+— the same `InteractionCardRecord` shape `list_cards` documents. Mirrors `getCard`.
 
 When no card matches (unknown id, empty id, or missing state file), returns the
 not-found ack:
@@ -26,7 +25,7 @@ not-found ack:
 ## Source
 
 Reads `state.json` directly with stdlib (`json`, `os`); no third-party imports.
-State path resolution mirrors `tasks.py:_default_app_dir`:
+State path resolution:
 - `OPENFUSED_APP_DIR_STATE` is a **directory** (not a file path); when set, used verbatim.
 - Otherwise: `~/.openfused/app`.
 - State file is always `<app_dir>/state.json`.

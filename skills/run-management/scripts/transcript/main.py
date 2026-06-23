@@ -3,8 +3,8 @@
 Reads ``<app_dir>/runs/<run_id>.ndjson`` directly with stdlib (after confining
 the resolved path to ``runs/`` — ``run_id`` is caller-controlled); no
 third-party imports.  ``<app_dir>`` is ``$OPENFUSED_APP_DIR_STATE`` (verbatim) or
-``~/.openfused/app`` — matching ``APP_DIR`` in app/src/server/paths.ts, under
-which ``runLogPath`` (app/src/server/runs/state.ts) joins ``runs/<id>.ndjson``.
+``~/.openfused/app`` — matching ``APP_DIR``, under
+which ``runLogPath`` joins ``runs/<id>.ndjson``.
 
 Params
 ------
@@ -17,8 +17,7 @@ list[dict]
     The ``RunEvent`` envelopes (``{runId, seq, type, payload}``) for the run,
     in file order. A missing file, an empty ``run_id``, or a ``run_id`` whose
     resolved path would escape ``runs/`` returns ``[]``. Torn / invalid trailing
-    lines are skipped (mirrors the Express ``replayEvents`` in
-    app/src/server/runs/stream.ts): a crashed run's partial transcript still
+    lines are skipped (mirrors the Express ``replayEvents``): a crashed run's partial transcript still
     replays its valid prefix.
 """
 
@@ -30,7 +29,7 @@ def _app_dir() -> str:
     """Resolve the app directory (the dir that holds state.json and runs/).
 
     ``OPENFUSED_APP_DIR_STATE`` is a DIRECTORY; when set it is used verbatim
-    (no expanduser — matching paths.ts). Otherwise fall back to
+    (no expanduser). Otherwise fall back to
     ``~/.openfused/app``. NOTE: distinct from read/main.py's ``_state_path()``
     on purpose — that helper appends ``state.json``; this one returns the
     directory so the caller can join ``runs/<id>.ndjson``.

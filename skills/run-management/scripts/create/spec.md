@@ -3,7 +3,7 @@
 Appends a new run record to the live app state file (`~/.openfused/app/state.json`
 or the directory given by `OPENFUSED_APP_DIR_STATE`).
 
-Mirrors `createRun` in `inloop/src/server/store/runs.ts`.
+Mirrors `createRun`.
 
 ## Inputs (all strings)
 

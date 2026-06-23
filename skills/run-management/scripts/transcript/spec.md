@@ -6,8 +6,8 @@ transcript(run_id: str = "") -> list[dict]
 
 Reads `<app_dir>/runs/<run_id>.ndjson` and returns the run's `RunEvent`
 envelopes in file order. `<app_dir>` is `$OPENFUSED_APP_DIR_STATE` (verbatim) or
-`~/.openfused/app` — the same `APP_DIR` (inloop/src/server/paths.ts) under which the
-Express launcher writes `runs/<id>.ndjson` (inloop/src/server/runs/state.ts).
+`~/.openfused/app` — the same `APP_DIR` under which the
+Express launcher writes `runs/<id>.ndjson`.
 
 Each line of the file is one `RunEvent`:
 
@@ -37,7 +37,7 @@ POST /api/exec/udf?workspace=_core&project=run-management
   to.
 - **Torn-line tolerance.** The NDJSON is append-as-you-go, so a crash mid-run can
   leave a torn final line. Invalid-JSON lines are skipped and the valid prefix is
-  returned — mirroring the Express `replayEvents` (inloop/src/server/runs/stream.ts).
+  returned — mirroring the Express `replayEvents`.
 
 ## Notes
 

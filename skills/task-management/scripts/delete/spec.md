@@ -67,7 +67,7 @@ When the task is not found:
 
 ## Notes
 
-- Mirrors `tasks.py:TasksStore.delete_task` exactly, adapted for the UDF
+- Mirrors `TasksStore.delete_task` exactly, adapted for the UDF
   boundary (returns an ack instead of raising `TaskNotFoundError`).
 - Uses camelCase throughout to match the on-disk JSON format written by the
   TypeScript app.

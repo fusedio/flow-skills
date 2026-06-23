@@ -4,7 +4,7 @@ Reads the global agent roster In-Loop (``openfused inloop``) owns —
 ``~/.openfused/app/agents/`` (or ``$OPENFUSED_APP_DIR_STATE/agents``) — one
 ``<slug>/AGENTS.md`` per persona (YAML frontmatter + prompt body) merged with the
 ``.openfused.yaml`` vendor sidecar (adapter / model / builtin). Mirrors
-``loadRoster``/``listAgents`` in ``inloop/src/server/{team,store/roster}.ts``.
+``loadRoster``/``listAgents``.
 
 The roster format is YAML, so this UDF imports PyYAML (a project-venv dependency
 declared in ``scripts/pyproject.toml`` — NOT an ``openfused.*`` import, which the
@@ -37,7 +37,7 @@ from pathlib import Path
 
 import yaml
 
-# --- roster format + store constants (mirror app/src/server/team.ts) ----------
+# --- roster format + store constants ----------
 
 AGENT_FILE = "AGENTS.md"
 SIDECAR_FILE = ".openfused.yaml"
@@ -45,7 +45,7 @@ AGENT_SCHEMA = "agentcompanies/v1"
 SIDECAR_SCHEMA = "openfused/v1"
 DEFAULT_ADAPTER = "claude_code"
 DEFAULT_MODEL: str | None = None
-# The default team that shipped BEFORE the seed ledger existed (roster.ts). Never
+# The default team that shipped BEFORE the seed ledger existed. Never
 # extend — new defaults are picked up via the ledger, not the baseline.
 PRE_LEDGER_BASELINE_SLUGS = ["data-engineer", "data-analyst", "data-qa"]
 
@@ -59,7 +59,7 @@ class _RosterError(Exception):
 
 def _app_dir() -> str:
     """Resolve the app dir (a DIRECTORY): ``$OPENFUSED_APP_DIR_STATE`` verbatim, else
-    ``~/.openfused/app`` — matching paths.ts ``APP_DIR``."""
+    ``~/.openfused/app`` — matching the app's ``APP_DIR``."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     return env_val if env_val else os.path.expanduser("~/.openfused/app")
 
@@ -105,7 +105,7 @@ def _load_seeds() -> list[dict]:
         return json.load(fh)
 
 
-# --- identity helpers (mirror team.ts deriveAgentId / roster.ts deriveSlug) ---
+# --- identity helpers ---
 
 
 def _derive_id(slug: str) -> str:
@@ -125,7 +125,7 @@ def _derive_slug(name: str) -> str:
     return "".join(out).strip("-")
 
 
-# --- YAML round-trip (mirror team.ts parse/serialize) -------------------------
+# --- YAML round-trip -------------------------
 
 
 def _split_frontmatter(markdown: str) -> tuple[str | None, str]:
@@ -258,7 +258,7 @@ def _serialize_sidecar(entries: dict) -> str:
     )
 
 
-# --- roster read/write (mirror loadRoster + the write path in roster.ts) ------
+# --- roster read/write (mirror loadRoster) ------
 
 
 def _iso_from_mtime(path: str) -> str:
@@ -345,7 +345,7 @@ def _write_agent_files(agent: dict) -> None:
     _write_sidecar_entry(agent["slug"], sidecar_entry)
 
 
-# --- seeding (faithful port of roster.ts seedDefaultRoster) -------------------
+# --- seeding -------------------
 
 
 def _read_ledger() -> set[str]:

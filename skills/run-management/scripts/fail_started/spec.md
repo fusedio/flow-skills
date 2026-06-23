@@ -2,8 +2,7 @@
 
 Boot orphan recovery's run sweep: fails every run currently `status == "started"`.
 
-Mirrors the run-sweep half of `recoverOrphans` in
-`inloop/src/server/store/runs.ts`. A run still `"started"` at boot was live when the
+Mirrors the run-sweep half of `recoverOrphans`. A run still `"started"` at boot was live when the
 previous server process died — its hub process is gone, so it can never finish.
 
 The task-side reconciliation of `recoverOrphans` (failing a stranded

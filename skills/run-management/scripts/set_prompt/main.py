@@ -2,10 +2,10 @@
 
 Writes ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
-Mirrors ``setRunPrompt`` in ``app/src/server/store/runs.ts``.
+Mirrors ``setRunPrompt``.
 
 Used when a queued resume accumulates further human follow-ups
-(spec/app-runs.md §13.2) so the prompt the UI shows matches the one the agent
+so the prompt the UI shows matches the one the agent
 will receive at launch.
 
 Params (all strings)
@@ -27,7 +27,7 @@ import fcntl
 import json
 import os
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -74,7 +74,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -147,7 +147,7 @@ def _save_doc(doc: dict) -> None:
 def set_prompt(id: str = "", prompt: str = "") -> dict:
     """Set the stored prompt on a run unconditionally.
 
-    Mirrors ``setRunPrompt`` in ``app/src/server/store/runs.ts`` (which is a
+    Mirrors ``setRunPrompt`` (which is a
     no-op on a missing run); here a missing run returns an informative ack
     instead. The app only calls this for a not-yet-finished (queued) run — the
     UDF performs no status check (the app gates legality before calling).

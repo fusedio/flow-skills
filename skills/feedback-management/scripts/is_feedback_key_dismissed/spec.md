@@ -1,8 +1,7 @@
 # is_feedback_key_dismissed
 
 Returns whether a synthetic feedback id is in the flat `dismissedFeedbackKeys`
-ACK ledger. Mirrors `isFeedbackKeyDismissed` in
-`app/src/server/store/inbox.ts`.
+ACK ledger. Mirrors `isFeedbackKeyDismissed`.
 
 Reads `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox
@@ -13,7 +12,7 @@ Reads `~/.openfused/app/state.json` (or the directory named by
 The respond/dismiss routes guard on this for a DERIVED completion/failure id
 (`derived:<type>:<runId>`) so a repeat action on the same id is rejected (404)
 rather than spawning a second run — mirroring `find_notify_comment`'s own ack
-check for a `notify` comment id (spec/feedback/contract.md §4).
+check for a `notify` comment id.
 
 ## Inputs (all strings)
 

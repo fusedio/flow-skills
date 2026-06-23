@@ -2,12 +2,10 @@
 
 Writes ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
-Mirrors ``resolveCard`` in ``app/src/server/store/cards.ts`` (§4.6).
+Mirrors ``resolveCard``.
 
-The UDF is a DUMB PERSISTER: the per-effect 422 validation + the resolve input →
-``{action, params}`` ``result`` mapping stay in ``routes/cards.ts``. This UDF
-receives an already-validated ``status`` + ``result`` and persists them under the
-pending-guard.
+The UDF is a DUMB PERSISTER: it receives an already-validated ``status`` +
+``result`` and persists them under the pending-guard.
 
 Params (all strings)
 --------------------
@@ -35,7 +33,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -82,7 +80,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -160,7 +158,7 @@ def resolve_card(
 ) -> dict:
     """Flip a pending card to a terminal state, guarded on status == pending.
 
-    Mirrors ``resolveCard`` in ``inloop/src/server/store/cards.ts``: the
+    Mirrors ``resolveCard``: the
     whole-document atomic write IS the resolve lock. Unknown or already-terminal
     cards return a ``{"ok": False, ...}`` ack and write nothing (the caller maps
     that to a 409).

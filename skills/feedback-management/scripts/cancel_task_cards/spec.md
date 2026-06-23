@@ -2,7 +2,7 @@
 
 Task-cancel cascade: sweep EVERY `pending` card on a task to `cancelled` (no
 result, no wake) in ONE whole-document read-modify-write. Mirrors
-`cancelTaskCards` in `inloop/src/server/store/cards.ts` (§5.1).
+`cancelTaskCards`.
 
 The whole sweep is a single atomic write so it cannot half-cancel a task's
 cards.

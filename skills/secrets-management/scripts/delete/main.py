@@ -1,7 +1,7 @@
 """Delete UDF — removes a secret from the OS keychain store (ungated).
 
-Reads/writes the same keychain-backed store as ``LocalSecretsBackend``
-(``backends/local/secrets.py``): the name→value map is stored as a JSON blob in
+Reads/writes the same keychain-backed store as ``LocalSecretsBackend``:
+the name→value map is stored as a JSON blob in
 the OS keychain under service=``"openfused"`` and account=``str(_store_path())``.
 The storage helpers below are ported verbatim from that backend so the two writers
 stay interoperable.

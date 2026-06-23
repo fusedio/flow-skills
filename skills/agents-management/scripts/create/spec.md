@@ -1,7 +1,6 @@
 # create
 
-Add a new custom persona to the live app roster. Mirrors `createAgent` in
-`inloop/src/server/store/roster.ts`.
+Add a new custom persona to the live app roster. Mirrors `createAgent`.
 
 ## Inputs
 

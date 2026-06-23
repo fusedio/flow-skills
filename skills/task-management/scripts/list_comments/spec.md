@@ -28,6 +28,6 @@ Read-only UDF. Returns comment records for a single task from the live app state
 - `task_id` with no matching comments → returns `[]`.
 - Missing or unreadable `state.json` → returns `[]` (treated as empty document).
 - Records are returned in ascending `createdAt` order (oldest first), matching
-  `tasks.py:list_comments`.
+  `list_comments`.
 - Raw dict round-trip: no schema reconstruction; all fields are returned exactly
   as stored on disk.

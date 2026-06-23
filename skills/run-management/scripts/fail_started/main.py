@@ -2,8 +2,7 @@
 
 Writes ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
-Mirrors the run-sweep half of ``recoverOrphans`` in
-``app/src/server/store/runs.ts``: a run still ``"started"`` at boot was live
+Mirrors the run-sweep half of ``recoverOrphans``: a run still ``"started"`` at boot was live
 when the previous server process died — its hub process is gone, so it can
 never finish. Fail every such run.
 
@@ -30,7 +29,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -77,7 +76,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -150,7 +149,7 @@ def _save_doc(doc: dict) -> None:
 def fail_started(error_message: str = "") -> dict:
     """Fail every run currently ``status == "started"``.
 
-    Mirrors the run sweep in ``recoverOrphans`` (``app/src/server/store/runs.ts``):
+    Mirrors the run sweep in ``recoverOrphans``:
     each swept run gets ``status="failed"``, ``finishedAt=now``, and the given
     ``errorMessage``. Writes only when at least one run was swept.
 

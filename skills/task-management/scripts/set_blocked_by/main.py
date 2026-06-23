@@ -23,8 +23,8 @@ Not implemented in this POC
   ``TasksStore.set_blocked_by`` raises ``BlockerCycleError`` when the proposed
   ``blockedBy`` list would form a dependency cycle.  That guard requires
   traversing the full blocker graph; it is omitted here to keep the UDF to
-  stdlib only.  Upgrade path: port ``_would_form_blocker_cycle_in`` from
-  ``tasks.py`` into the inline helpers, or add a shared helper module once the
+  stdlib only.  Upgrade path: port ``_would_form_blocker_cycle_in``
+  into the inline helpers, or add a shared helper module once the
   POC graduates to a proper package.
 """
 
@@ -34,7 +34,7 @@ import json
 import os
 from datetime import UTC, datetime
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -81,7 +81,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -185,7 +185,7 @@ def _parse_blocked_by(raw: str) -> "list | object":
 def set_blocked_by(id: str = "", blocked_by: str = "") -> dict:
     """Set the blockedBy edge on a task.
 
-    Mirrors ``TasksStore.set_blocked_by`` in ``tasks.py`` minus cycle detection.
+    Mirrors ``TasksStore.set_blocked_by`` minus cycle detection.
     The real method no-ops on an absent task; here we return an informative ack
     dict instead so callers can detect the miss.
 

@@ -2,7 +2,7 @@
 
 Sets `agentId` on a task record and promotes `pending` → `todo` if applicable.
 
-Mirrors `TasksStore.assign_task` in `tasks.py`.
+Mirrors `TasksStore.assign_task`.
 
 ## Inputs (all strings)
 

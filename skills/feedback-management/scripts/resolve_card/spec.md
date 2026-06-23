@@ -1,12 +1,9 @@
 # resolve_card
 
 Atomically transitions a `pending` card to a terminal state — the single guarded
-`pending → terminal` flip. Mirrors `resolveCard` in
-`inloop/src/server/store/cards.ts` (§4.6).
+`pending → terminal` flip. Mirrors `resolveCard`.
 
-> **The UDF is a dumb persister.** The per-effect 422 VALIDATION + the resolve
-> input → `{action, params}` `result` + terminal `status` MAPPING stay in
-> `routes/cards.ts`. This UDF receives an already-validated `status` + `result`
+> **The UDF is a dumb persister.** This UDF receives an already-validated `status` + `result`
 > and only persists them under the pending-guard. Moving validation into the UDF
 > is explicitly out of scope.
 

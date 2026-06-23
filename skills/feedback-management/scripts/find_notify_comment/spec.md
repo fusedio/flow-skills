@@ -1,7 +1,7 @@
 # find_notify_comment
 
 Returns a `notify` comment record by id — a read for the inbox respond/dispatch
-path. Mirrors `findNotifyComment` in `app/src/server/store/inbox.ts` exactly.
+path. Mirrors `findNotifyComment` exactly.
 
 Reads `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox
@@ -25,7 +25,7 @@ is never re-actioned.
 
 ## Output ack shape
 
-On a hit, the raw comment dict (the fields `store/inbox.ts` reads):
+On a hit, the raw comment dict (the fields read):
 
 ```json
 {

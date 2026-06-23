@@ -2,7 +2,7 @@
 
 Reads ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
-Mirrors ``findNotifyComment`` in ``app/src/server/store/inbox.ts``.
+Mirrors ``findNotifyComment``.
 
 A ``notify`` comment (``cmt_…``, the Phase-4 ``notify_user`` → comment swap) is
 projected into the inbox Updates feed by ``inbox_view`` but owns no stored inbox
@@ -17,7 +17,7 @@ comment_id : str
 Returns
 -------
 dict
-    The raw comment dict on a hit (the fields ``store/inbox.ts`` reads: id,
+    The raw comment dict on a hit (fields: id,
     taskId, author, body, kind, widget, createdAt), or
     ``{"ok": False, "error": "not found"}`` on any miss — an unknown id, a
     non-``notify`` comment, or one already acknowledged (its id is in
@@ -29,7 +29,7 @@ import fcntl
 import json
 import os
 
-# --- per-entity state helpers (spec/core.md) -------------------------------
+# --- per-entity state helpers -------------------------------
 # Each top-level collection is its own <app_dir>/state/<key>.json. A write UDF
 # names the collection(s) it mutates in `_load_doc(...)`; the helper holds an
 # exclusive flock on each `<app_dir>/state/.<key>.lock` sentinel across the whole
@@ -76,7 +76,7 @@ atexit.register(_release_locks)
 
 def _state_dir() -> str:
     """Resolve <app_dir>/state. ``OPENFUSED_APP_DIR_STATE`` (a DIRECTORY) is used
-    verbatim when set (no expanduser, matching paths.ts); else ~/.openfused/app."""
+    verbatim when set (no expanduser); else ~/.openfused/app."""
     env_val = os.environ.get("OPENFUSED_APP_DIR_STATE")
     app_dir = env_val if env_val else os.path.expanduser("~/.openfused/app")
     return os.path.join(app_dir, "state")
@@ -149,7 +149,7 @@ def _save_doc(doc: dict) -> None:
 def find_notify_comment(comment_id: str = "") -> dict:
     """Return a ``notify`` comment by id, or the not-found ack.
 
-    Mirrors ``findNotifyComment`` in ``app/src/server/store/inbox.ts`` exactly:
+    Mirrors ``findNotifyComment`` exactly:
     returns the raw comment dict on a hit, ``{"ok": False, "error": "not found"}``
     on any miss (unknown id, not a ``notify`` comment, or already acked — its id
     in ``dismissedFeedbackKeys``) so a replied/dismissed notify report is not

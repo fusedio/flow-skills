@@ -5,8 +5,7 @@ read(task_ids: str = "") -> list[dict]
 ```
 
 Returns `RunRecord` dicts from `~/.openfused/app/state.json` (`runs[]`),
-oldest-first by `createdAt` — mirroring the Express `listRuns` ordering in
-`inloop/src/server/store/runs.ts`. `task_ids` — a JSON array string
+oldest-first by `createdAt` — mirroring the Express `listRuns` ordering. `task_ids` — a JSON array string
 (`'["t1","t2"]'`) or comma-separated list (`"t1,t2"`) — filters to that SET of
 tasks' runs (matched against the camelCase `taskId` field); empty string returns
 all runs across all tasks, and an explicit empty set (`"[]"`) returns none.
@@ -21,8 +20,7 @@ pass `overrides: {"task_ids": "[\"...\"]"}` (or filter in SQL with
 
 ## Record shape
 
-Each row is the camelCase `RunRecord` exactly as written by the app
-(`inloop/src/server/store-core.ts`):
+Each row is the camelCase `RunRecord` exactly as written by the app:
 
 | field | type | notes |
 |---|---|---|

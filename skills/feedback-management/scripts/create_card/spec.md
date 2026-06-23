@@ -4,8 +4,7 @@ Mints a fresh `pending` interaction card and appends it to the live app state
 file (`~/.openfused/app/state.json` or the directory given by
 `OPENFUSED_APP_DIR_STATE`).
 
-Mirrors `createCard` (+ the route's §7 idempotency lookup) in
-`inloop/src/server/store/cards.ts`. This is the WRITE side of the
+Mirrors `createCard` (+ the route's §7 idempotency lookup). This is the WRITE side of the
 feedback-management system of record (the read side is `get_card` /
 `list_cards` / `list_open_cards`).
 
@@ -34,9 +33,8 @@ carries the per-effect data (`approval_gate`: `{verb, detail}`;
 
 When `idempotency_key` is non-empty, the UDF scans for an existing card under the
 same `(project, taskId, idempotencyKey)`. If one exists, the UDF returns it
-**unchanged** (no new card minted, nothing superseded). The equivalence check
-that decides 200-return-existing vs 409-conflict stays in `routes/cards.ts`
-(`isEquivalentCardCreate`); this UDF only does the (project, taskId, key) lookup
+**unchanged** (no new card minted, nothing superseded). This UDF does NOT decide
+200-return-existing vs 409-conflict; it only does the (project, taskId, key) lookup
 and returns the existing record on a hit. `sourceRunId` is **excluded** from the
 equivalence concern (it differs on every retry), so the returned existing card
 keeps its original `sourceRunId`.

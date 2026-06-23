@@ -1,0 +1,285 @@
+---
+name: task-management
+description: Read, create, assign, and re-status tasks in the OpenFused App task store (~/.openfused/app/state.json) through live UDFs, and render the standalone task-board widget. Use when working with OpenFused tasks, the kanban/task board, or the app's task state.
+---
+
+# task-management — project contract
+
+The App task store exposed as live UDFs. Reads and writes
+`~/.openfused/app/state.json` — the same file the Express app owns — so agents
+and the UI share one live store without any API layer.
+
+> This `SKILL.md` is the project contract. It reaches agents two ways: at
+> runtime through the `get_project_context` MCP tool (and `OPENFUSED_PROJECT`
+> scoping), which returns this file inline; and as a Claude Code **skill** via
+> the `openfused-core` plugin manifest at `_core/.claude-plugin/plugin.json`
+> (`skills: "./"`), which materializes to `~/.openfused/core` — load it with
+> `claude --plugin-dir ~/.openfused/core`.
+
+## What this project is
+
+Nine UDFs over the App state file: six that read/mutate task records (`read`,
+`create`, `assign`, `update_status`, `set_blocked_by`, `delete`), two that
+manage comments (`list_comments`, `add_comment`), and one that seeds whole
+collections verbatim (`bulk_seed`). Every UDF touches `state.json` directly with
+stdlib; no third-party imports in UDF logic.
+
+The split is: **read via SQL** (any query over `{{read}}`), **write via UDF**
+(any mutation via `POST /api/exec/udf`). Both endpoints are addressed with
+`?workspace=_core&project=task-management`.
+
+## Access pattern
+
+```
+# Read — use the SQL endpoint; {{read}} is backed by the read UDF
+POST /api/exec/sql?workspace=_core&project=task-management
+{"sql": "SELECT * FROM {{read}} WHERE project = 'my-project'"}
+
+# Write — use the UDF endpoint
+POST /api/exec/udf?workspace=_core&project=task-management
+{"udf": "create", "overrides": {"project": "my-project", "title": "hello"}}
+```
+
+Response shape: `{"data": <result>, "error": null}` on success;
+`{"data": null, "error": "<message>"}` on failure.
+
+## State file
+
+Path: `~/.openfused/app/state.json` (default) or
+`$OPENFUSED_APP_DIR_STATE/state.json` when the env var names an app directory.
+Records are camelCase JSON, written with `indent=2, ensure_ascii=False`, via
+atomic `tmp + os.replace` — byte-compatible with the Express `store.ts`.
+
+Two-writer last-write-wins clobber is accepted in this POC (locking is out of
+scope). `TasksStore` in `inloop/src/server/tasks.py` is **not importable in-sandbox**
+because the exec runtime injects an `openfused` shim that shadows the real
+package; UDFs therefore reach `state.json` directly.
+
+## Operations
+
+All parameters arrive as strings. Empty string is the zero value for optional
+params. Missing-task responses return `{"ok": false, "error": "not found"}`.
+
+### read
+
+```
+read(project: str = "") -> list[dict]
+```
+
+Returns tasks from `state.json`, newest-first by `createdAt`. `project` filters
+to one project slug; empty string returns all projects.
+
+SQL shorthand: `SELECT * FROM {{read}}` (no `project` override needed; pass an
+`overrides: {"project": "..."}` to scope to one project, or filter in SQL).
+
+### create
+
+```
+create(
+    project: str = "",
+    title: str = "",
+    description: str = "",    # defaults to title when empty
+    status: str = "pending",  # "pending" or "todo"
+    parent_id: str = "",      # empty → null parentId
+    created_by: str = "user",
+    work_mode: str = "standard",
+) -> dict
+```
+
+Mints a new `task_<12hex>` id, auto-numbers within the project, appends to
+`state.json`, returns the full 13-field camelCase record.
+
+### assign
+
+```
+assign(id: str = "", agent_id: str = "") -> dict
+```
+
+Sets `agentId` on the task and promotes `pending → todo`. Returns the updated
+record, or the not-found ack.
+
+### update_status
+
+```
+update_status(id: str = "", status: str = "") -> dict
+```
+
+Sets `status` unconditionally (`pending`, `todo`, `in_progress`, `completed`,
+`failed`, `cancelled`). Returns the updated record.
+
+### set_blocked_by
+
+```
+set_blocked_by(id: str = "", blocked_by: str = "") -> dict
+```
+
+Replaces the `blockedBy` list on the task. `blocked_by` accepts a JSON array
+string (`'["t1","t2"]'`) or a comma-separated string (`"t1,t2"`); empty string
+sets `blockedBy: []`. Returns the updated record.
+
+### delete
+
+```
+delete(id: str = "") -> dict
+```
+
+Hard-deletes the task and all transitive descendants. Cascades to `runs`,
+`comments`, `inbox`, `cards`, `costEvents`. Scrubs deleted ids
+from remaining tasks' `blockedBy`. Returns an ack:
+
+```json
+{
+  "deletedTaskIds": ["..."],
+  "runsRemoved": 0,
+  "commentsRemoved": 0,
+  "inboxRemoved": 0,
+  "cardsRemoved": 0,
+  "costEventsRemoved": 0
+}
+```
+
+### list_comments
+
+```
+list_comments(task_id: str = "") -> list[dict]
+```
+
+Returns comments for `task_id`, oldest-first by `createdAt`. Empty list when
+`task_id` is empty or no comments match.
+
+### add_comment
+
+```
+add_comment(task_id: str = "", author: str = "", body: str = "", kind: str = "", widget: str = "") -> dict
+```
+
+Appends a new `cmt_<12hex>` comment to `state.json`. Returns the core 5-field
+record: `{id, taskId, author, body, createdAt}`. A non-empty `kind` (e.g.
+`notify`, marking a `notify_user` FYI the inbox Updates feed surfaces —
+`spec/feedback/consolidation.md` Phase 4) and a non-empty `widget` (a JSON-UI
+config JSON string, parsed and stored as the object) are added **only when set**,
+so a plain thread `note` stays byte-identical to the pre-Phase-4 5-field shape.
+
+### bulk_seed
+
+```
+bulk_seed(tasks: str = "", comments: str = "") -> dict
+```
+
+Inserts task + comment records **verbatim** — the restore/seed counterpart of
+`create`. `tasks`/`comments` are **JSON-encoded array strings** of full records
+(the all-strings boundary; empty string / missing → nothing to do). Each record
+is written exactly as given (preserving `id`/`number`/`createdAt`/`updatedAt`/
+`agentId`/`status`/`parentId`/`blockedBy`); nothing is minted. It is
+**idempotent by `id`** — a record whose `id` already exists is skipped, never
+duplicated or overwritten. Writes the `tasks` and `comments` collections (each
+under its own flock), and returns the per-collection counts:
+
+```json
+{
+  "tasks": { "inserted": 6, "skipped": 0 },
+  "comments": { "inserted": 3, "skipped": 0 }
+}
+```
+
+This is the only supported way to seed app-state from host Python — seeding goes
+through this UDF, never a direct file write.
+
+## Rendering as a `task-board` widget (standalone)
+
+These UDFs are enough to drive the `task-board` widget on their own — no app
+task store, no reserved `__openfused_tasks` built-ins, no other UI. The widget
+reads through `{{_core.task-management.read}}` and writes through this project's
+CRUD UDFs (`update_status` / `create` / `assign`) directly, so a single JSON-UI
+node gives you a live list / kanban / tree over `state.json`.
+
+The config ships **inside the wheel** as a saved widget of this project, at
+`task-management/widgets/task_board.json`. It materializes alongside the UDFs to
+`~/.openfused/core/task-management/widgets/task_board.json`, so it is available
+on first run with no authoring step — open it with:
+
+```bash
+openfused widget open ~/.openfused/core/task-management/widgets/task_board.json
+```
+
+The shipped config:
+
+```json
+{
+  "type": "task-board",
+  "props": {
+    "project": "all",
+    "sql": "SELECT * FROM {{_core.task-management.read?rev=$ofTasksRev}}",
+    "defaultView": "board",
+    "defaultGroupBy": "status"
+  }
+}
+```
+
+How the seams map onto this project's UDFs:
+
+- **Read** — `props.sql` resolves `{{_core.task-management.read}}`, which returns
+  the seam-① row columns (`id`, `project`, `number`, `title`, `description`,
+  `status`, `agentId`, `createdBy`, `createdAt`, `updatedAt`, `parentId`,
+  `blockedBy`). The `?rev=$ofTasksRev` kwarg is an opaque re-resolve nonce the
+  `read` UDF ignores; the board bumps it after each write to refetch
+  (mutate-then-refetch). An override may add a `WHERE` / projection but **must**
+  keep both the seam-① columns and the `?rev=$ofTasksRev` kwarg.
+- **Drag-to-change-status** → `_core.task-management.update_status` `{id, status}`
+  (a drag into the `cancelled` lane is a `move` to `status: "cancelled"`). Only
+  `pending↔todo` and cancel are hand-settable; every other lane is reached by an
+  agent run, so other drops snap back.
+- **Create** → `_core.task-management.create` `{id, project, title, description}` (the
+  composer's prompt maps to `title`; the client `id` makes retries idempotent —
+  get-or-create). v1 writes the row only — it does not
+  dispatch an agent run. The `create` UDF takes no `agentId`; an assignee picked
+  in the composer is applied by a chained `_core.task-management.assign` call.
+- **Assign / reassign** → `_core.task-management.assign` `{id, agent_id}`.
+
+Scope to one project by setting `"project": "<slug>"` and filtering in the read
+SQL (`... WHERE project = '<slug>'`).
+
+> **Where it resolves.** The board needs `_core.*` cross-project refs to resolve.
+> That works on every **local** surface — `openfused widget open`
+> / the parley (dev serve's directory-addressed mode injects the built-in `_core`
+> shared root) and the app's dev serve (`openfused dev serve` / `openfused inloop`).
+> Only the **deployed-serve** bundle has no `_core` resolve context (no daemon),
+> so the task-board renders "unavailable" there.
+>
+> **Not yet wired through `_core`:** the `update_status`/`create` ops above are
+> live; assignee-on-create, delete, assign, blocked-by, and comments are not yet
+> reachable from the widget (use the UDF endpoint directly for those).
+
+## Layout (skill-folder convention)
+
+```
+scripts/
+├── pyproject.toml          # project deps (duckdb/pandas/pyarrow for SQL resolver)
+├── read/
+│   ├── main.py
+│   └── spec.md
+├── create/
+│   ├── main.py
+│   └── spec.md
+├── assign/ …
+├── update_status/ …
+├── set_blocked_by/ …
+├── delete/ …
+├── list_comments/ …
+├── add_comment/ …
+└── bulk_seed/ …
+```
+
+Source lives in the wheel under `openfused/_core/task-management/` (read-only).
+The local-backend venv materializes at `~/.openfused/core/task-management/scripts/.venv`
+on first startup. Adding a new op = add `scripts/<name>/{main.py,spec.md}` and
+re-register in `openfused.toml`.
+
+## Conventions
+
+- UDF logic is stdlib-only; no imports from `openfused.*` (the exec sandbox
+  shadows the package with a shim). Reach `state.json` directly.
+- All params are strings; parse non-string inputs (e.g. `blocked_by`) inside the
+  UDF before use.
+- Writes are atomic: `tmp + os.replace` only; never write directly to
+  `state.json`.

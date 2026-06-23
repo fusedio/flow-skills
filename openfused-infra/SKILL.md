@@ -67,8 +67,7 @@ The policy is **re-applied on every `infra apply`**, so it self-heals if manuall
 
 > **Serve repo:** `infra serve` creates a *separate* ECR repository,
 > `<prefix.rstrip('-')>-serve`, holding the dispatcher image (content-tagged).
-> It is created on first `infra serve` and removed by `infra teardown`. See the
-> `openfused-deploy` skill.
+> It is created on first `infra serve` and removed by `infra teardown`.
 
 ---
 

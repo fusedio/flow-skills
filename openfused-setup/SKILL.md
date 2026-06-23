@@ -97,7 +97,7 @@ pip install openfused
 
 > **Single package — the app is included.** A normal install (`uv add` / `pip install openfused`) carries the whole product: the MCP server, the CLI, and the `openfused inloop` app (UI + server bundled in). No second install, sibling checkout, or `node_modules` is needed. The only extra requirement is **Node 20+** on PATH to *run* `openfused inloop` (the bare MCP server and CLI data-plane don't need Node). Building the package from source additionally needs pnpm + npm — see `docs/building.md`.
 
-> **First run seeds a sample project.** The very first `openfused up` / `openfused onboard` on a fresh **local** install lands a finished, ready-to-explore showcase project — **`nyc-street-names`** (a complete worked example: a UDF + a dashboard widget + a populated task/run history) — *beside* the one the onboarding wizard helps you create. So a brand-new user opens the app to a real project, not an empty board, and ends up with two projects. It seeds **once** (gated on a stamp + a fresh onboarding flag), is idempotent and non-clobbering, and never blocks boot. To opt out of the seed entirely, set **`OPENFUSED_SEED_PREBUILT=0`**. (Cloud-backend installs skip it.) See `spec/prebuilt-project.md`.
+> **First run seeds a sample project.** The very first `openfused up` / `openfused onboard` on a fresh **local** install lands a finished, ready-to-explore showcase project — **`nyc-street-names`** (a complete worked example: a UDF + a dashboard widget + a populated task/run history) — *beside* the one the onboarding wizard helps you create. So a brand-new user opens the app to a real project, not an empty board, and ends up with two projects. It seeds **once** (gated on a stamp + a fresh onboarding flag), is idempotent and non-clobbering, and never blocks boot. To opt out of the seed entirely, set **`OPENFUSED_SEED_PREBUILT=0`**. (Cloud-backend installs skip it.)
 
 ---
 
@@ -111,7 +111,7 @@ You do **not** need a cloud account to get started. Pick by what's available:
 |---|---|---|---|
 | **AWS** | `aws` | AWS credentials, plus Docker to build the Lambda container image (or `--builder codebuild` to build remotely without it) | Production and horizontal scale |
 | **Local** | `local` | nothing — host venvs via uv/pip, no cloud | The fastest start; local dev/CI. No isolation boundary: code runs directly on the host |
-| **Fused** | `fused` | A Fused-managed openfused environment + an API key (onboarding flow: `spec/fused-onboarding.md`) | Running code on a remote, managed openfused that Fused provisions and operates — the local side provisions nothing |
+| **Fused** | `fused` | A Fused-managed openfused environment + an API key (guided onboarding flow) | Running code on a remote, managed openfused that Fused provisions and operates — the local side provisions nothing |
 
 AWS Lambda execution is **container-only**: packages (`duckdb`, `polars`, `h3`, etc.) are baked into an ECR image via `openfused infra build-image`, and that image is the Lambda function's code. There is no runtime fallback — until an image is built and configured, `execute_code` fails with a clear error telling you to run `infra build-image`. Per-call requirements are never pip-installed at invocation time.
 

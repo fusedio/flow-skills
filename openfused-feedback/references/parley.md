@@ -132,5 +132,4 @@ push plan-v2.json   ──▶  the same tab re-renders in place, pre-filled
   `push`/`watch` boots the app (loopback `127.0.0.1:4400`) if it isn't running.
 - `push` with `--no-open` never opens the browser; default `--open` opens the
   parley page only when nobody is watching it.
-- Full normative protocol: the OpenFused repo's `spec/feedback/local.md`
-  § The parley.
+- The parley protocol is the local `widget open` feedback channel described above.

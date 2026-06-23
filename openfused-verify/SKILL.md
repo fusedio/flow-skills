@@ -102,7 +102,7 @@ Requires an Anthropic API key, resolved in order: `ANTHROPIC_API_KEY` (or `ANTHR
 
 ### Per-UDF specs (`spec.md`)
 
-In the workspace model (`spec/projects.md`), each UDF carries a `spec.md` in its own folder under `scripts/` — `taxi-pipeline/scripts/taxi-analysis/spec.md`, `taxi-pipeline/scripts/trip-dashboard/spec.md`. The flat `<stem>.spec.md` sidecar convention is removed.
+In the workspace model, each UDF carries a `spec.md` in its own folder under `scripts/` — `taxi-pipeline/scripts/taxi-analysis/spec.md`, `taxi-pipeline/scripts/trip-dashboard/spec.md`. The flat `<stem>.spec.md` sidecar convention is removed.
 
 - `openfused code verify <file> --spec "..."` still works for ad-hoc verification outside a UDF folder.
 - The flat sidecar auto-discovery and `--no-spec` flag are **removed** (Sub-plan A). Pass `--spec TEXT` explicitly when you want a spec check outside a UDF context.
@@ -208,7 +208,7 @@ Filter parameters:
 - `limit`: max events to return (default 50)
 - `status`: `"allowed"`, `"blocked"`, or `"warned"`
 - `event_type`: `"execute_code"`, `"verify_code"`, or `"cache_clear"`
-- `project`: the workspace project the event was recorded under (every event is stamped with the resolved project's name — `null` in global scope; spec/projects.md). CLI: `openfused audit log --project NAME`.
+- `project`: the workspace project the event was recorded under (every event is stamped with the resolved project's name — `null` in global scope). CLI: `openfused audit log --project NAME`.
 - `start_date` / `end_date`: ISO date strings (`"YYYY-MM-DD"`). When provided and an `audit_bucket` is configured, S3 is also queried so events from past sessions or other server instances are included.
 
 For durable cross-instance audit history, configure an `audit_bucket` (S3 with Object Lock) in the environment via `openfused env update --audit-bucket`. Events are written to both the local DB and S3; `get_audit_log` with a date range merges both sources.

@@ -11,16 +11,15 @@ config (a tree of `{type, props, children}` nodes — text, inputs, buttons), op
 it with `openfused widget open`, and the command **blocks until the human
 responds**, then prints their answer on stdout.
 
-This is OpenFused's local feedback loop (`spec/feedback/local.md`) repackaged for
+This is OpenFused's local feedback loop repackaged for
 **Claude Code**: a visual-planning surface for questions, approvals, and plan
 reviews, in the user's own workspace.
 
 > **CLI vs in-app.** This skill is the **CLI** `widget open`/parley surface — you
 > author a static widget and read the human's submitted `action`/`params`. The
 > separate **in-app** `ask_user(summary, widget, effect)` tool (with its `effect:
-> "reply"` / `effect: "approval_gate"` discriminator) is the In-Loop agent surface,
-> documented in `skills/openfused-planning/architect.md`. The `effect` argument does
-> not apply here.
+> "reply"` / `effect: "approval_gate"` discriminator) is the In-Loop agent surface.
+> The `effect` argument does not apply here.
 
 ## When to use this
 
@@ -276,8 +275,7 @@ Everything above is **static** (no environment needed). To put **live data** in
 front of the human (a chart of affected rows, a table of files a migration
 touches), add a data-bound component (`sql-table`, `bar-chart`, a map) whose
 `sql` reads a UDF via `{{ref}}`. That needs a resolved OpenFused environment and a
-project venv — out of scope here; see the **`openfused-widgets`** skill and
-`spec/json-ui-data.md`.
+project venv — out of scope here; see the **`openfused-widgets`** skill.
 
 ## <a name="vs-askuserquestion"></a>vs. AskUserQuestion
 

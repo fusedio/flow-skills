@@ -165,8 +165,8 @@ pasting the spec prose into the chat. Specs are the human-review surface; make
 that surface a real rendered review, not a wall of text.
 
 Write a **spec-review widget** and put it in front of the human with `openfused
-widget open` (the CLI/standalone analog of the architect's `ask_user` gate —
-`openfused-planning` › architect §4.3). Mirror what the UI does:
+widget open` (the CLI/standalone analog of the architect's `ask_user` gate).
+Mirror what the UI does:
 
 - Render the **spec content as `markdown`** (one `markdown` node per UDF/widget
   spec) — proper headings/lists/code, not flattened into `text`. On a **revision
@@ -203,7 +203,7 @@ fresh review widget; loop until approved. Summarise if multiple UDFs are pending
 > through the teamwork MCP, not `widget open`: the architect runs the `ask_user`
 > spec-review gate by authoring ONE complete widget (the plan body as `text`, a
 > `diff` node per changed spec file, and the approve/request-changes buttons — no
-> separate `details`/`paths` args) per `openfused-planning` › architect §4.3. The
+> separate `details`/`paths` args). The
 > `widget open` form above is the **CLI / standalone** path.
 
 ---
@@ -401,7 +401,7 @@ A dashboard widget is a `{"type": <component>, "props": {…}}` JSON file in
 matplotlib spec or inline a data array — those are not openfused components and
 render as `unknown component: <type>`. The supported set is generated from the
 widgets package (`components.json`, the hard type gate); when unsure, read
-`spec/ui/json-ui.md` § Component catalog rather than guessing.
+the component catalog in the **openfused-widgets** skill rather than guessing.
 
 A chart gets its data from a **`sql` prop** (DuckDB) that reads a UDF via
 `{{udf_name}}` and aliases the result columns to the chart's contract — e.g.
@@ -435,5 +435,3 @@ There is **no codegen MCP tool** — authoring is `Write` + `verify_code` + `git
 - **openfused-execute** — `execute_code`/`code run` patterns (libraries, S3, secrets).
 - **openfused-setup** — install + AWS env provisioning; launching `openfused inloop`.
 - **openfused-cli** — full command/flag reference and the local-servers inventory.
-- **openfused-deploy** — serving plane + the widget-URL deploy path.
-- `spec/projects.md`, `spec/projects-git.md` (pairing hook), `spec/projects-deploy.md`.

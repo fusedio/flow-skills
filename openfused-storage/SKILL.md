@@ -73,7 +73,7 @@ through the MCP boundary — see openfused-execute.
 
 Secrets let executing code reach databases/APIs without hard-coding credentials.
 The model is **the execution principal reads the store directly** — values are
-never injected into the `execute_code` payload (full contract: `spec/secrets.md`).
+never injected into the `execute_code` payload.
 
 ### `put_secret(name, value)` — mind the name prefix
 
@@ -87,7 +87,7 @@ put_secret(name="openfused-pg-conn", value="postgresql://user:pass@host/db")
 ```
 
 Then read it *inside* the execution using `openfused.get_secret` — works on both
-AWS and the local backend (see `spec/sdk-openfused.md` § `openfused` shim):
+AWS and the local backend (via the `openfused` shim):
 
 ```python
 import openfused
@@ -103,8 +103,7 @@ result = ...  # use conn
 `get_secret` returns the secret string (raises if absent or binary — text only).
 `list_secrets` returns `[{"name", "arn", …}]`, prefix-filtered. On the local
 backend secrets live in the OS keychain (one JSON blob per environment, keyed by
-the resolved store path); access control is OS-keychain, not IAM
-(`spec/secrets.md` § Local).
+the resolved store path); access control is OS-keychain, not IAM.
 
 ### `delete_secret(name)` — gated behind `--enable-destructive`
 

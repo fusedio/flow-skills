@@ -152,7 +152,7 @@ The API key is resolved (first hit wins) from `--api-key-secret` (local secrets 
 
 #### Guided onboarding — the `openfused fused` group
 
-Instead of hand-building the env above, the `openfused fused` group runs the control-plane flow (login → find org/env → wait ready → mint an API key → store it → create the env). Auth0 config defaults to Fused's tenant + the `openfused-server-api` audience; override with `FUSED_CLOUD_AUTH0_DOMAIN` / `FUSED_CLOUD_AUTH0_CLIENT_ID` / `FUSED_CLOUD_AUTH0_AUDIENCE`. See `spec/fused-onboarding.md`.
+Instead of hand-building the env above, the `openfused fused` group runs the control-plane flow (login → find org/env → wait ready → mint an API key → store it → create the env). Auth0 config defaults to Fused's tenant + the `openfused-server-api` audience; override with `FUSED_CLOUD_AUTH0_DOMAIN` / `FUSED_CLOUD_AUTH0_CLIENT_ID` / `FUSED_CLOUD_AUTH0_AUDIENCE`.
 
 ```bash
 openfused fused login [--no-browser]            # Auth0 PKCE; caches a control-plane JWT
@@ -205,7 +205,7 @@ openfused env update prod --verify '{"enabled": true, "typecheck": true, "typech
 
 ## Projects (`project`)
 
-Projects are versioned, deployable collections of UDFs. The on-disk model is: **workspace ⊃ project ⊃ UDF** (`spec/projects.md`). All project commands implicitly target the `default` workspace at `~/.openfused/workspaces/default/` (override with `OPENFUSED_WORKSPACES_DIR`).
+Projects are versioned, deployable collections of UDFs. The on-disk model is: **workspace ⊃ project ⊃ UDF**. All project commands implicitly target the `default` workspace at `~/.openfused/workspaces/default/` (override with `OPENFUSED_WORKSPACES_DIR`).
 
 The first `project new` call auto-creates the default workspace (git init + installs the openfused-managed v5 pre-commit hook). The hook blocks manual commits that touch a UDF's `spec.md` without its entrypoint or vice versa. Use `git commit --no-verify` to bypass it when needed.
 
@@ -486,7 +486,7 @@ The build/distribution process is documented in `docs/building.md`.
 plus the built-in `_core` workspace and reports per-project health findings. It
 exists to turn latent layout/venv drift — the kind that makes a project's widgets
 render empty with a confusing `` `.venv` not found `` error only at use time — into
-one up-front, actionable report (spec/projects.md §6.1).
+one up-front, actionable report.
 
 ```sh
 openfused doctor          # read-only survey (default)
@@ -528,7 +528,7 @@ gate.
 ## Workspace projects (`project`)
 
 A **project** is a directory rooted at an `openfused.toml` manifest — the unit of
-scope and memory (spec/projects.md). Projects are discovered by directory listing
+scope and memory. Projects are discovered by directory listing
 under `~/.openfused/workspaces/default/` (no registry file). Resolution is
 git-style: explicit name → `OPENFUSED_PROJECT` → manifest walk-up from cwd →
 global scope (pre-project behavior unchanged).
@@ -576,7 +576,7 @@ contract, reference notes, widgets, UDF scripts, and the resolved environment.
 ### Serve a project as a read-only MCP (`project serve --mcp`)
 
 `openfused project serve --mcp [--project NAME]` publishes **one** project as the
-**read-only external MCP product tier** (spec/project-mcp.md) — a queryable data
+**read-only external MCP product tier** — a queryable data
 source any MCP client (Claude Desktop, a BI tool, another agent stack) can connect
 to. The closed surface is:
 
@@ -587,7 +587,7 @@ to. The closed surface is:
   the project has a readable pipeline graph (`canvas.toml`, or the implicit floor
   derived from `{{ref}}`/`fused.load` scans), each UDF tool's description is enriched
   read-only with **upstream/downstream lineage** (`reads: …` / `feeds: …`) and the
-  `{{ref}}` **argument names** that drive it (spec/pipeline.md §8). A missing/corrupt
+  `{{ref}}` **argument names** that drive it. A missing/corrupt
   `canvas.toml` simply omits the annotation — it never breaks tool publishing;
 - **`widget://` / `reference://` resources** — each saved widget (config + resolved
   data) and reference note, readable point-in-time.
@@ -616,12 +616,12 @@ gated. It is the binary the app's "Serve as MCP" connect snippet bakes:
 ## Pipeline graph (`pipeline`)
 
 The project's UDFs wired into a persisted, versioned graph — nodes, `{{ref}}`
-edges, and a `canvas.toml` home (spec/pipeline.md). Both commands resolve the
+edges, and a `canvas.toml` home. Both commands resolve the
 project the same way as `project show` (explicit `--project` → `OPENFUSED_PROJECT`
 → `openfused.toml` walk-up) and emit the `Pipeline` JSON
 (`{name, path, version, nodes, edges, viewport}`) to stdout. They are the seam the
 `openfused inloop` app reads/writes the canvas through; the graph is a **design-time
-lens** and never enters the resolve loop (spec/pipeline.md §7).
+lens** and never enters the resolve loop.
 
 ```sh
 openfused pipeline graph                        # read the derived/persisted graph as JSON
@@ -637,7 +637,7 @@ openfused pipeline derive --project taxi          # explicit project
   `canvas.toml` still yields the derivable graph (the implicit-scan floor, `version`
   null); a **corrupt** `canvas.toml` surfaces as a CLI error (non-zero exit), never
   a crash.
-- **`derive`** is the derive-and-persist write path (spec/pipeline.md §5.1): it runs
+- **`derive`** is the derive-and-persist write path: it runs
   the implicit scan, lays nodes out left-to-right by stage depth, and writes a
   `canvas.toml` at the project root (or `--canvas PATH`) capturing the derived nodes
   + edges as **explicit lineage** (whole-document atomic write). It then emits the
@@ -684,7 +684,7 @@ openfused secrets put openfused-db-password "s3cr3t"   # readable from Lambda
 openfused secrets put db-password "s3cr3t"             # NOT readable from Lambda
 ```
 
-Never pass secret values through `code run` inline code strings — retrieve them inside the execution using `openfused.get_secret("openfused-...")` (see `spec/sdk-openfused.md` § `openfused` shim; works on AWS and the local backend).
+Never pass secret values through `code run` inline code strings — retrieve them inside the execution using `openfused.get_secret("openfused-...")` (works on AWS and the local backend).
 
 ---
 
@@ -774,7 +774,7 @@ openfused code verify myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
 | `--project NAME` | — | Scan this project's `pyproject.toml` deps for CVEs (local). Without it, the dep scan uses the AWS env image packages, or nothing on local. Mutually exclusive with `--project-dir`. |
 | `--project-dir PATH` | — | Scan using `<dir>/scripts/pyproject.toml` deps (local-only). Mutually exclusive with `--project`. |
 
-The flat `<stem>.spec.md` sidecar auto-discovery and `--no-spec` flag are **removed**. Each UDF now carries one `spec.md` in its own folder (`spec/projects.md` §2). Pass `--spec` explicitly when verifying outside a UDF context.
+The flat `<stem>.spec.md` sidecar auto-discovery and `--no-spec` flag are **removed**. Each UDF now carries one `spec.md` in its own folder. Pass `--spec` explicitly when verifying outside a UDF context.
 
 See the **openfused-projects** skill for the spec-first, agent-authored UDF flow.
 
@@ -870,7 +870,7 @@ instead of an HTTP endpoint — exactly the surface of `project serve --mcp`
 resources, never a write tool; see "Serve a project as a read-only MCP" above). It
 requires `SRC` to be a directory (not `-c`/stdin/`--file`) and is stdio-only
 (`--port`/`--host` do not apply). The read-only registry is a *separate assembly*
-from the bare `openfused` server's gated RW surface (spec/project-mcp.md §3.1).
+from the bare `openfused` server's gated RW surface.
 
 `code serve` is the **local dev server only** — there is no `--deploy`: deployed
 serving is share-only (`infra serve` provisions the plane, `share create` mints
@@ -925,7 +925,7 @@ Deployed serving is share-only:
 
 ## Served URLs / share links (`share`)
 
-The share-only URL model (`spec/share-links.md`): `share create` is the **only**
+The share-only URL model: `share create` is the **only**
 URL-minting operation — it publishes an app (a `.py` file or a project directory)
 as a content-addressed artifact in the env's cache bucket and writes the mount
 record binding a token to it with the access control you choose. Publishing never
@@ -1119,7 +1119,7 @@ Author a widget as a JSON tree of `{type, props, children?}` nodes (the root is 
 - **Table**: `sql-table` · **Layout**: `canvas`
 - **Maps**: `map`, `map-bounds`, `fused-map`
 
-Full prop schemas live in `spec/ui/json-ui.md` § Component catalog. **Not implemented — do not author**: `map-h3`, `kepler-map`, `code-editor`, `transformer`, `ai-chat`, `widget-builder`, `pdf-gallery-viewer`. `html` does **not** substitute `{{udf}}`/`$param` (it reads `value` verbatim) — for data on a map, use a map widget, not an HTML/Leaflet hack.
+Full prop schemas live in the **openfused-widgets** skill's component catalog. **Not implemented — do not author**: `map-h3`, `kepler-map`, `code-editor`, `transformer`, `ai-chat`, `widget-builder`, `pdf-gallery-viewer`. `html` does **not** substitute `{{udf}}`/`$param` (it reads `value` verbatim) — for data on a map, use a map widget, not an HTML/Leaflet hack.
 
 ### Maps — authoring contracts (read before authoring any map)
 
@@ -1138,8 +1138,7 @@ The `widget open`/`push`/`watch`/`parley` commands are served by the
 chromeless client SPA), a sibling of the `openfused up` control plane, not part of
 it. (This **supersedes** the prior "fold" model, where these commands ran inside
 the `openfused up` Express process behind an `appProtocol` handshake; the standalone
-viewer + parley now live in their own host — `spec/feedback/local.md`,
-`spec/ui/widget-host-migration.md`.) You **do not** start it yourself: each widget
+viewer + parley now live in their own host.) You **do not** start it yourself: each widget
 command **boots-or-reuses** the widget-host transparently.
 
 - **Own port, no state file.** The widget-host binds a fixed loopback port (default
@@ -1164,9 +1163,8 @@ command **boots-or-reuses** the widget-host transparently.
   env change needs no restart.
 
 Omitted, the `--dir` on `open`/`push`/`watch`/`parley` defaults to the resolved
-project's `widgets/` directory (created when absent; spec/projects.md), else the
-current directory; an explicit directory always wins. Full protocol:
-`spec/feedback/local.md`.
+project's `widgets/` directory (created when absent), else the
+current directory; an explicit directory always wins.
 
 ### Open a widget with a feedback loop (`widget open`)
 
@@ -1205,7 +1203,7 @@ Default-mode stdout/exit contract:
 {"event":"end","action":"<closed|name|timeout|interrupted>","params":{…}}
 ```
 
-A page **refresh counts as a close** (the browser fires the same event); a crashed browser sends nothing and the command ends at the timeout. Full protocol: `spec/feedback/local.md`.
+A page **refresh counts as a close** (the browser fires the same event); a crashed browser sends nothing and the command ends at the timeout.
 
 ### The parley — a standing channel (`widget push` / `widget watch` / `widget parley`)
 
@@ -1229,7 +1227,7 @@ By default `watch` emits only **`action`** and **`close`** events — the low-vo
 | `widget watch` | `--dir .`, `--from latest\|all\|<seq>` (default `latest`), `--timeout 0` (= forever), `--verbose` (also emit `params`; default off) | NDJSON per event: `{"event":"action"\|"close"\|"params","seq":N,"rev":R[,"action"][,"terminal"],"params":{…}}`; final `{"event":"end","reason":"interrupted"\|"timeout"}` | Ctrl-C `130`, timeout `3`, server lost `1` (no end line) |
 | `widget parley` | `--dir .`, `--no-open` | none (URL on stderr) | `0` |
 
-A `close` event is a presence signal, not an ending — the human left the tab; the parley continues; reopening the page resumes reporting. Full protocol: `spec/feedback/local.md` § The parley.
+A `close` event is a presence signal, not an ending — the human left the tab; the parley continues; reopening the page resumes reporting.
 
 ### Headless resolve daemon (`openfused dev serve`)
 
@@ -1244,7 +1242,7 @@ replaces the old `POST /api/widget-data`), `POST /api/exec/sql`, `POST /api/exec
 and `GET /health`. Prints one JSON handshake line (`{"origin","port","token","pid"}`)
 to stdout, then runs until `--timeout`/SIGTERM.
 
-Full detail: `spec/dev-serve.md`. The dev serve command itself is documented below.
+The dev serve command itself is documented below.
 
 ---
 
@@ -1305,7 +1303,7 @@ executes the built-in task-management read UDF without needing a user workspace.
 | `--port` | `0` | Port; `0` = ephemeral (reported in handshake) |
 | `--timeout SECONDS` | `0` | Auto-shutdown; `0` = run until stopped |
 
-The CLI starts the server; it is not a client.  Spec: `spec/dev-serve.md`.
+The CLI starts the server; it is not a client.
 
 ---
 

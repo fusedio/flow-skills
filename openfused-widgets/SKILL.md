@@ -130,7 +130,7 @@ deliberate override (one consistent default look across every surface).
 > `value`s to its `param` as a **`string[]`**. Because the param holds an array,
 > it (like `sql-table`'s `selectionParam` and `video-review`) **must never be
 > referenced in SQL** — `$param` is text substitution and only scalars are
-> SQL-safe (`spec/json-ui-data.md`). Use a `dropdown` for single-select.
+> SQL-safe. Use a `dropdown` for single-select.
 
 ---
 
@@ -214,7 +214,7 @@ for geo data, not an optional extra.
   workspace, e.g. `{{_core.task-management.create}}` (read path) or a button
   `executor` firing the same name (write path). Only the allowlisted `_core`
   workspace is reachable (any other first segment → `unknown endpoint`); its
-  source is the packaged `core_source_dir()` (spec/core.md) but it RUNS under the
+  source is the packaged `core_source_dir()` but it RUNS under the
   **consuming** project's venv, so keep shared UDFs dependency-light. `_core` refs
   resolve on every local surface — they all route through `openfused dev serve`,
   whose directory-addressed modes (`?dir=`/`?projectDir=`, used by `widget open` /
@@ -222,15 +222,14 @@ for geo data, not an optional extra.
   widget (e.g. the task-board's `mutateBackend: "core"`) can drive the built-in
   `_core` UDFs; only the deployed-serve bundle can't.
   App-parity note: this is an OpenFused-only extension — a cross-project ref won't
-  resolve if pasted into the Fused app. Details: `spec/json-ui-data.md` §
-  Cross-project references.
+  resolve if pasted into the Fused app.
 - `$name` is an **inline text substitution** (not a DuckDB bind param), so it
   works anywhere — including inside `'…'` and `"…"`. Grammar: `$[A-Za-z_]\w*`.
   Substitution is context-aware (quotes are doubled; comments/dollar-quoted
   bodies are left verbatim). This matches the Fused app byte-for-byte, so a
   config authored here pastes into the app and behaves identically.
 
-Full normative grammar: `spec/json-ui-data.md`.
+The `{{ref}}` / `$param` grammar above is the full contract.
 
 ### Core UDFs → custom views (no project setup)
 
@@ -265,7 +264,7 @@ A write needs a `button` whose `executor` fires the qualified name, e.g.
 `"executor": "_core.task-management.update_status?id=$selectedId&status='completed'"`.
 Same rules as any `{{ref}}`: the UDF runs under the **consuming** widget's venv, so
 core UDFs are kept dependency-light. Only the deployed-serve bundle can't reach
-`_core`; every local surface can. Full contract: `spec/core.md`.
+`_core`; every local surface can.
 
 ---
 
@@ -347,8 +346,6 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
   from the UDF's result. To reflect a write, have the UDF mutate state a read
   `{{ref}}` re-reads, and re-resolve (e.g. bump a `$param` the read depends on).
 
-Normative detail: `spec/json-ui-app.md §11`, ADR 0008; the `button` contract is
-`packages/widgets/specs/widgets/button.md`.
 
 ---
 
@@ -435,7 +432,7 @@ by the interaction you need:
 - **parley** (`widget push`/`watch`/`parley`/`agent`) is the standing
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details
-  + flags: `openfused-cli` (widget section) and `spec/feedback/local.md`.
+  + flags: `openfused-cli` (widget section).
 - `openfused inloop` renders **saved dashboards** (`widgets/<stem>.json`) **natively**
   (no iframe/bundle) with data resolved by the single headless daemon the app
   owns (`openfused dev serve` — internal plumbing; you never start it yourself). A
@@ -444,7 +441,7 @@ by the interaction you need:
   with `widget open` (above) or deploy it.
 - **Deployed** `json` UDFs build a self-contained `widget.html` bundle + a gated
   resolver data route → a stable widget URL. This is the one place a renderer
-  bundle (not the app) serves the widget. See `openfused-deploy`.
+  bundle (not the app) serves the widget.
 
 ---
 
@@ -490,8 +487,3 @@ by the interaction you need:
 - `openfused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
   `serve`) and the app (`up`); also documents `openfused dev serve` which can
   address the built-in `_core` workspace (`workspace="_core"`) with no user setup.
-- `openfused-deploy` — deploying a `json` widget UDF to a stable URL.
-- `spec/ui/json-ui.md` — the config document + component catalog + single source
-  of truth; `spec/json-ui-data.md` — the normative `{{ref}}`/`$param` grammar and
-  resolver topology; `spec/feedback/local.md` — the `widget open`/parley protocol;
-  `spec/core.md` — the `_core` built-in workspace contract.

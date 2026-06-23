@@ -1,6 +1,6 @@
 ---
 name: openfused-execute
-description: Best practices for running code through openfused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For parallel fan-out across many partitions see openfused-fanout; for security scanning, spec checks, and testing see openfused-verify.
+description: Best practices for running code through openfused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For security scanning, spec checks, and testing see openfused-verify.
 ---
 
 # Running code via openfused
@@ -339,7 +339,7 @@ When a task spans many partitions or files, don't loop sequentially. The right s
 - **Light per-partition work** (counts, small aggregations) → a `ThreadPoolExecutor` inside a single `execute_code` call.
 - **Heavy per-partition work**, or a partition that would OOM or exceed `lambda_timeout` → fan out to child Lambdas via the `_openfused` SDK or a coordinator that dispatches workers.
 
-Both patterns — thread fan-out, `_openfused.invoke`, the coordinator/worker pattern, `monitor_concurrency_limit`, validating a worker before dispatch, batching oversized partitions, and avoiding recursion storms — are documented in the **openfused-fanout** skill. See `examples/building_count_msft_fanout/` for a runnable child-Lambda example.
+Both patterns use thread fan-out, `_openfused.invoke`, the coordinator/worker pattern, `monitor_concurrency_limit`, validating a worker before dispatch, batching oversized partitions, and avoiding recursion storms.
 
 ## Fused realtime backend constraints
 
@@ -385,7 +385,7 @@ After each `execute_code` call, the response may include a `monitoring` key with
 - `throttles > 0` — invocations were rejected due to concurrency limits
 - `errors > 0` — function errors in the recent window (distinct from the current call's own error)
 
-`monitor_concurrency_limit` (default `1`) raises the threshold for the concurrency warning above. Fanning out intentionally trips it, so set it to the fan-out count + 1 — see the **openfused-fanout** skill.
+`monitor_concurrency_limit` (default `1`) raises the threshold for the concurrency warning above. Fanning out intentionally trips it, so set it to the fan-out count + 1.
 
 **Local backend** — `monitoring` is accepted but returns no snapshots (there is no metrics source to poll on the host).
 
@@ -406,7 +406,7 @@ The mock provides:
 - **`fused.load("worker")`** — returns a worker reference bound to a file (the `.py` is implied: `fused.load("worker")` loads `worker.py`). Call it (`worker(state="ak")`) to dispatch a single child Lambda, or use `.map()` to fan out. Not registered for auto-call. The file is not read until the worker is called or `.map()`'d.
 - **`udf.map(items, filename=None, max_workers=16)`** — fans out to child Lambdas (see below).
 - **`fused.run(udf_fn, **kwargs)`** — equivalent to `udf_fn(**kwargs)`; prefer calling directly.
-- **`fused.Response(body, *, media_type, status_code=200, headers=None)`** and helpers **`fused.HTMLResponse` / `fused.PlainTextResponse` / `fused.JSONResponse`** — return one (as `result` or from a UDF) to set the HTTP content type/status/headers when the code is served via `code serve`. Any non-Response value is sent as JSON. Outside a serve context the body is just the return value. See the **openfused-deploy** skill.
+- **`fused.Response(body, *, media_type, status_code=200, headers=None)`** and helpers **`fused.HTMLResponse` / `fused.PlainTextResponse` / `fused.JSONResponse`** — return one (as `result` or from a UDF) to set the HTTP content type/status/headers when the code is served via `code serve`. Any non-Response value is sent as JSON. Outside a serve context the body is just the return value.
 
 ```python
 import fused
@@ -484,7 +484,7 @@ def double_value(x=0):
 - Do not use `print` as a return mechanism — `stdout` is captured but not a structured return channel
 - Do not import packages in `requirements` that are already in stdlib
 - Do not run multiple unrelated analyses in one `execute_code` call — split them
-- Do not fan out more than one level deep — workers must never invoke child Lambdas (see openfused-fanout)
+- Do not fan out more than one level deep — workers must never invoke child Lambdas
 
 ## Verification, expectations, and testing
 

@@ -6,8 +6,7 @@ prop goes under `props`. An unknown `type` is a hard error. Inputs carry a
 
 These are the components you need for questions / approvals / plan reviews — the
 **static** set (no environment required). The full catalog (charts, tables, maps —
-all data-bound) is in the OpenFused repo's `spec/ui/json-ui.md` and the
-`openfused-widgets` skill.
+all data-bound) is in the `openfused-widgets` skill.
 
 `style` is universal: an inline CSS declaration string merged over the
 component's defaults (e.g. `"display:grid; gap:16px; padding:20px"`).

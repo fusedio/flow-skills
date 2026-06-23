@@ -333,7 +333,7 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
   error surfaces on hover. The UDF is **invoked directly** (the args become typed
   kwargs — no SQL is synthesized), and its **raw return value** comes back as
   `data` in the `{data, error}` envelope: a DataFrame/Arrow table as records, a
-  dict/list/scalar verbatim (ADR 0009).
+  dict/list/scalar verbatim.
 - It runs through the same compute backend as reads — **so the project venv needs
   the UDF's imports**, same as the read path. Caching is forced off (a write must
   re-run every press).

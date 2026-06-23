@@ -453,7 +453,7 @@ cat data.csv | openfused files upload - --bucket my-bucket --key uploads/data.cs
 
 ## The app (`up`)
 
-`openfused inloop` serves the local web UI (the app — DIRECTION.md Phase 1): project
+`openfused inloop` serves the local web UI (the app): project
 pages, task → agent runs with live transcripts, and the embedded widget board.
 
 ```sh
@@ -476,7 +476,6 @@ in `inloop/` (the `@fusedio/agentbridge-*` adapters come from npm, so no sibling
 checkout is needed), or use `--dev` for the vite + tsx watch server (`--dev` is
 source-only). Spawned agents and the widget board use the `openfused` CLI —
 `OPENFUSED_BIN` overrides the command (defaults to the entrypoint that ran `up`).
-The build/distribution process is documented in `docs/building.md`.
 
 ---
 
@@ -643,7 +642,7 @@ openfused pipeline derive --project taxi          # explicit project
   + edges as **explicit lineage** (whole-document atomic write). It then emits the
   **reloaded** graph, so `version` is the `sha256:<hex>` content hash of the file
   just written. The Python core is the only `canvas.toml` writer (the mutation
-  boundary, DIRECTION.md Principle 2).
+  boundary).
 
 ---
 

@@ -47,7 +47,7 @@ The policy is **re-applied on every `infra apply`**, so it self-heals if manuall
 - `MemorySize`: value from `lambda_memory_mb` (default 1024 MB)
 - `EphemeralStorage`: value from `lambda_tmp_storage_mb` (when not the 512 MB default)
 - `Architectures`: value from `lambda_architecture` — changing it is a REPLACE (delete + recreate), since architecture cannot be updated on an Image-type function
-- `TenancyConfig`: `{"TenantIsolationMode": "PER_TENANT"}` — every compute function openfused invokes is created with **AWS Lambda tenant isolation mode**, so each invocation runs in an execution environment dedicated to its tenant id (the caller identity, or a shared placeholder). See `docs/lambda-warm-container-tenancy.md`.
+- `TenancyConfig`: `{"TenantIsolationMode": "PER_TENANT"}` — every compute function openfused invokes is created with **AWS Lambda tenant isolation mode**, so each invocation runs in an execution environment dedicated to its tenant id (the caller identity, or a shared placeholder).
 
 `infra plan` compares the live function's image URI, memory size, ephemeral storage, architecture, and tags against the desired state and reports drift (a leftover zip-packaged function from an old install is reported as REPLACE). `infra apply` reconciles them. Tenant isolation is **not** drift-checked: AWS only allows it to be set at function *creation*.
 

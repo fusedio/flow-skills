@@ -300,8 +300,8 @@ config. Check in this order:
    from a current source so it ships a fresh `openfused/_inloop/dist`.
 3. **A foreign/UI-less app is squatting the port → "Cannot GET /widget-file/…" in
    the browser.** The app binds one loopback port (default `4400`) and **reuses
-   whatever already answers there**. If another process (e.g. a `tsx watch
-   src/server/main.ts` dev server, or a stale build) holds the port, `widget open`
+   whatever already answers there**. If another process (e.g. a stale dev server
+   or a stale build) holds the port, `widget open`
    reuses it and the browser 404s. The tell: it answers `/api/projects` with `200`
    but `GET /` or `GET /widget-file/<id>` returns **`Cannot GET`** (no UI bundle).
    **Preflight** the port before opening:

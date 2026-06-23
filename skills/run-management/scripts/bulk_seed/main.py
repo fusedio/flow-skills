@@ -8,9 +8,9 @@ already exists is skipped, never duplicated or overwritten) and by transcript fi
 (a ``runs/<runId>.ndjson`` that already exists is skipped). This is the FIRST
 transcript WRITER in run-management — the ``transcript`` UDF stays read-only.
 
-Used to seed the shipped pre-built showcase project's run history on first boot
-(docs/plans/prebuilt-showcase). Writes through the UDF layer (never a direct file
-write) so the storage backing stays swappable behind the UDF contract.
+Used to seed the shipped pre-built showcase project's run history on first boot.
+Writes through the UDF layer (never a direct file write) so the storage backing
+stays swappable behind the UDF contract.
 
 Params (both JSON-encoded strings — the all-strings boundary)
 ------

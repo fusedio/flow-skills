@@ -7,9 +7,9 @@ transcripts to `<app_dir>/runs/<runId>.ndjson`, **never minting** any
 id/timestamp/status. This is the **first transcript WRITER** in run-management
 (the `transcript` UDF stays read-only).
 
-Used to seed the shipped pre-built showcase project's run history on first boot
-(`docs/plans/prebuilt-showcase`). Writes go through the UDF layer (never a direct
-file write) so the storage backing stays swappable behind the UDF contract.
+Used to seed the shipped pre-built showcase project's run history on first boot.
+Writes go through the UDF layer (never a direct file write) so the storage
+backing stays swappable behind the UDF contract.
 
 ## Inputs (all strings — JSON-encoded)
 

@@ -142,8 +142,7 @@ def read(project: str = "", rev: str = "") -> list:
 
     Each row is enriched with the seam-① fields the task-board widget reads: its
     joined ``runs`` (the run records for that task), ``isLive`` (a run is still
-    ``started``), and ``liveRunCount`` — mirroring the host accessor enrichment in
-    ``backends/local/invoke.py`` so the task-board widget reads through this
+    ``started``), and ``liveRunCount`` — so the task-board widget reads through this
     ``_core`` UDF directly (preserving run counts + the live pulse).
 
     Args:

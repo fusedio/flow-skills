@@ -87,10 +87,18 @@ Response shape: `{"data": <result>, "error": null}` on success;
 
 ## State files
 
-- Runs: `~/.openfused/app/state.json` (default) or
-  `$OPENFUSED_APP_DIR_STATE/state.json` when the env var names an app directory.
-- Transcripts: `<app_dir>/runs/<runId>.ndjson` (one `RunEvent` per line),
-  where `<app_dir>` is `$OPENFUSED_APP_DIR_STATE` or `~/.openfused/app`.
+The app directory is resolved per operation, highest precedence first:
+
+1. The `app_dir` parameter on any operation (e.g. `create(..., app_dir="/path/to/app")`) — use this to run the skill standalone against your own store, no environment setup required.
+2. The `$OPENFUSED_APP_DIR_STATE` env var when it names an app directory.
+3. `~/.openfused/app` (default).
+
+- Runs: `<app_dir>/state/runs.json`.
+- Transcripts: `<app_dir>/runs/<runId>.ndjson` (one `RunEvent` per line).
+
+Every operation (including `transcript` and `bulk_seed`) accepts the optional
+`app_dir` string param; when omitted the env-var/default chain applies, so
+existing callers are unaffected.
 
 Records are camelCase JSON. Writes go through whole-document read-modify-write
 (all top-level keys preserved) + atomic `tmp` + `os.replace`, matching the

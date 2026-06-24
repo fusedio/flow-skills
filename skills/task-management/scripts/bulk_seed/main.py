@@ -185,7 +185,7 @@ def _insert_verbatim(existing: list, incoming: list) -> tuple[int, int]:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def bulk_seed(tasks: str = "", comments: str = "") -> dict:
+def bulk_seed(tasks: str = "", comments: str = "", app_dir: str = "") -> dict:
     """Insert task + comment records VERBATIM, idempotent by ``id`` (seed/restore).
 
     Args:
@@ -194,6 +194,8 @@ def bulk_seed(tasks: str = "", comments: str = "") -> dict:
 
     Returns the per-collection insert/skip counts.
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     incoming_tasks = _parse_records(tasks, "tasks")
     incoming_comments = _parse_records(comments, "comments")
 

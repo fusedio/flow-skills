@@ -388,12 +388,15 @@ def _derived_item(item_type: str, run: dict, task: dict, body: str) -> dict:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def inbox_view(project: str = "") -> dict:
+def inbox_view(project: str = "", app_dir: str = "") -> dict:
     """Assemble the inbox feed {items, pending} from the shared state.json.
 
     Args:
         project: project slug to scope to; empty string is the global inbox.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc()
     tasks: list = doc.get("tasks") or []
     runs: list = doc.get("runs") or []

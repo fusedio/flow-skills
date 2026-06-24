@@ -137,12 +137,15 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def list_comments(task_id: str = "") -> list:
+def list_comments(task_id: str = "", app_dir: str = "") -> list:
     """Return comment records for a task from state.json, oldest-first by createdAt.
 
     Args:
         task_id: task id to filter on; empty string returns [].
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not task_id:
         return []
     doc = _load_doc()

@@ -19,3 +19,6 @@ dependencies = [
     # hermetic, OS-keychain-free isolation without changing the production keyring usage.
     "keyrings.alt>=5",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8"]

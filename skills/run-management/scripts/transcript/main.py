@@ -58,12 +58,15 @@ def _transcript_path(run_id: str) -> str | None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def transcript(run_id: str = "") -> list:
+def transcript(run_id: str = "", app_dir: str = "") -> list:
     """Return the RunEvent list for ``run_id`` from its NDJSON transcript.
 
     Args:
         run_id: the run id whose transcript to read; empty string returns [].
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not run_id:
         return []
     path = _transcript_path(run_id)

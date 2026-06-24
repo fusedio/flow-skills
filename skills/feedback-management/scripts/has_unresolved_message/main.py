@@ -144,7 +144,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def has_unresolved_message(task_id: str = "") -> bool:
+def has_unresolved_message(task_id: str = "", app_dir: str = "") -> bool:
     """Whether the task has an open report that IS its completion report.
 
     Mirrors ``hasUnresolvedMessage`` — the
@@ -155,7 +155,10 @@ def has_unresolved_message(task_id: str = "") -> bool:
 
     Args:
         task_id: the task id to check; empty string is never unresolved.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not task_id:
         return False
     doc = _load_doc()

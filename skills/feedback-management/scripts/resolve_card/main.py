@@ -155,6 +155,7 @@ def resolve_card(
     status: str = "",
     result: str = "",
     resolved_by: str = "",
+    app_dir: str = "",
 ) -> dict:
     """Flip a pending card to a terminal state, guarded on status == pending.
 
@@ -170,7 +171,10 @@ def resolve_card(
         result: the generic ``{action, params}`` result, JSON-encoded; empty
             → null.
         resolved_by: who resolved it; empty → null.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     # result is JSON at the string boundary; empty → null (e.g. a cancel).
     result_obj = None
     if result:

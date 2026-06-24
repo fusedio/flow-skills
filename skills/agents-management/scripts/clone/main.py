@@ -402,13 +402,19 @@ def _seed_default_roster() -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def clone(id: str = "", name: str = "") -> dict:
+def clone(id: str = "", name: str = "", app_dir: str = "", seed_file: str = "") -> dict:
     """Create a builtin:false copy of a persona under a new name.
 
     Args:
         id: the source persona's slug or derived id.
         name: the new persona's name (slug derived from it).
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
+        seed_file: default-roster seed source override (precedence over OPENFUSED_AGENTS_SEED_FILE).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
+    if seed_file:
+        os.environ["OPENFUSED_AGENTS_SEED_FILE"] = seed_file
     if not name.strip():
         return {"ok": False, "error": "name is required"}
     _seed_default_roster()

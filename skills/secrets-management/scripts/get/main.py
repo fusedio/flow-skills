@@ -44,7 +44,10 @@ def _import_keyring() -> tuple[Any, type[Exception]]:
 _keyring, _KeyringError = _import_keyring()
 
 # Keychain service name; the account (username) is the per-env store path.
-_KEYRING_SERVICE = "openfused"
+def _keyring_service() -> str:
+    """Resolve the keychain service name: ``OPENFUSED_KEYRING_SERVICE`` else the
+    default ``"openfused"``. The per-call ``service`` param sets that env var."""
+    return os.environ.get("OPENFUSED_KEYRING_SERVICE") or "openfused"
 
 
 def _store_path() -> Path:
@@ -77,7 +80,7 @@ def _load() -> dict[str, str]:
     kr = _require_keyring()
     account = str(_store_path())
     try:
-        blob = kr.get_password(_KEYRING_SERVICE, account)
+        blob = kr.get_password(_keyring_service(), account)
     except _KeyringError as exc:
         raise RuntimeError(
             f"OS keychain unavailable for store {_store_path()}: {exc}. "
@@ -95,12 +98,18 @@ def _load() -> dict[str, str]:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def get(name: str = "") -> dict:
+def get(name: str = "", secrets_file: str = "", service: str = "") -> dict:
     """Return the cleartext value of one secret, or a not-found ack.
 
     Args:
         name: the secret name to reveal.
+        secrets_file: secrets store path override (precedence over OPENFUSED_SECRETS_FILE).
+        service: keychain service-name override (precedence over OPENFUSED_KEYRING_SERVICE; default "openfused").
     """
+    if secrets_file:
+        os.environ["OPENFUSED_SECRETS_FILE"] = secrets_file
+    if service:
+        os.environ["OPENFUSED_KEYRING_SERVICE"] = service
     data = _load()
     if name not in data:
         return {"ok": False, "error": "not found"}

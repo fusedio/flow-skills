@@ -140,7 +140,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def is_feedback_key_dismissed(id: str = "") -> bool:
+def is_feedback_key_dismissed(id: str = "", app_dir: str = "") -> bool:
     """Return whether ``id`` is in ``dismissedFeedbackKeys``.
 
     Mirrors ``isFeedbackKeyDismissed``. An
@@ -149,7 +149,10 @@ def is_feedback_key_dismissed(id: str = "") -> bool:
 
     Args:
         id: the synthetic feedback id to check; empty string is never dismissed.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not id:
         return False
     keys = _load_doc().get("dismissedFeedbackKeys") or []

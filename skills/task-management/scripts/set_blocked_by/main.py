@@ -182,7 +182,7 @@ def _parse_blocked_by(raw: str) -> "list | object":
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def set_blocked_by(id: str = "", blocked_by: str = "") -> dict:
+def set_blocked_by(id: str = "", blocked_by: str = "", app_dir: str = "") -> dict:
     """Set the blockedBy edge on a task.
 
     Mirrors ``TasksStore.set_blocked_by`` minus cycle detection.
@@ -193,7 +193,10 @@ def set_blocked_by(id: str = "", blocked_by: str = "") -> dict:
         id: the task id to update.
         blocked_by: JSON array string or comma-separated list of blocker ids;
             empty string sets blockedBy to [].
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("tasks")
     tasks: list[dict] = doc.get("tasks") or []
 

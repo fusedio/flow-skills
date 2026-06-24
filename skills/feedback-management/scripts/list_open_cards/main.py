@@ -149,12 +149,15 @@ _WAKE_POLICIES = ("wake_assignee",)
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def list_open_cards(project: str = "") -> list:
+def list_open_cards(project: str = "", app_dir: str = "") -> list:
     """Return pending wake-policy cards from state.json, oldest-first by createdAt.
 
     Args:
         project: project slug to filter on; empty string returns all projects.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc()
     cards: list[dict] = doc.get("cards") or []
     open_cards = [

@@ -65,10 +65,16 @@ The two endpoints differ in how `data` is shaped:
 
 ## State file
 
-Path: `~/.openfused/app/state.json` (default) or
-`$OPENFUSED_APP_DIR_STATE/state.json` when the env var names an app directory.
-Records are camelCase JSON, written with `indent=2, ensure_ascii=False`, via
-atomic `tmp + os.replace`.
+Path resolution, highest precedence first:
+
+1. The `app_dir` parameter on any operation (e.g. `create(..., app_dir="/path/to/app")`) — use this to run the skill standalone against your own store, no environment setup required.
+2. The `$OPENFUSED_APP_DIR_STATE` env var when it names an app directory.
+3. `~/.openfused/app` (default).
+
+State lives under `<app_dir>/state/`. Records are camelCase JSON, written with
+`indent=2, ensure_ascii=False`, via atomic `tmp + os.replace`. Every operation
+accepts the optional `app_dir` string param; when omitted the env-var/default
+chain applies, so existing callers are unaffected.
 
 Two-writer last-write-wins clobber is accepted in this POC (locking is out of
 scope). The exec runtime injects an `openfused` shim that shadows the real

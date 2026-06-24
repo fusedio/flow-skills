@@ -415,6 +415,8 @@ def create(
     model: str = "",
     adapter: str = "",
     slug: str = "",
+    app_dir: str = "",
+    seed_file: str = "",
 ) -> dict:
     """Create a custom persona and write it to the roster.
 
@@ -423,7 +425,13 @@ def create(
         model: optional model override (empty → null).
         adapter: optional adapter (empty → claude_code).
         slug: optional explicit slug (empty → derived from name).
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
+        seed_file: default-roster seed source override (precedence over OPENFUSED_AGENTS_SEED_FILE).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
+    if seed_file:
+        os.environ["OPENFUSED_AGENTS_SEED_FILE"] = seed_file
     for field, value in (
         ("name", name),
         ("title", title),

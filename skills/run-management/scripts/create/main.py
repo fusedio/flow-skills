@@ -144,7 +144,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def create(id: str = "", task_id: str = "", prompt: str = "") -> dict:
+def create(id: str = "", task_id: str = "", prompt: str = "", app_dir: str = "") -> dict:
     """Append a new run to state.json with the caller-supplied id.
 
     Mirrors ``createRun(taskId, prompt, id)``: ``status`` starts ``"queued"`` (the run is
@@ -157,7 +157,10 @@ def create(id: str = "", task_id: str = "", prompt: str = "") -> dict:
         id: the run id (``run_<hex>``); supplied by the caller, never minted here.
         task_id: the task this run advances.
         prompt: the composed prompt sent to the adapter.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

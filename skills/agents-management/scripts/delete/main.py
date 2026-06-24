@@ -399,12 +399,18 @@ def _seed_default_roster() -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def delete(id: str = "") -> dict:
+def delete(id: str = "", app_dir: str = "", seed_file: str = "") -> dict:
     """Remove a persona's directory + sidecar entry; ledger left untouched.
 
     Args:
         id: the persona's slug or derived id.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
+        seed_file: default-roster seed source override (precedence over OPENFUSED_AGENTS_SEED_FILE).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
+    if seed_file:
+        os.environ["OPENFUSED_AGENTS_SEED_FILE"] = seed_file
     _seed_default_roster()
     agent = next((a for a in _load_roster() if a["slug"] == id or a["id"] == id), None)
     if agent is None:

@@ -165,12 +165,15 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def delete(id: str = "") -> dict:
+def delete(id: str = "", app_dir: str = "") -> dict:
     """Hard-delete a task and its transitive descendants with full cascade.
 
     Args:
         id: the task id to delete.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("cards", "comments", "costEvents", "inbox", "runs", "tasks")
     tasks: list[dict] = doc.get("tasks") or []
 

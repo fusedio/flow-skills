@@ -144,7 +144,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def set_prompt(id: str = "", prompt: str = "") -> dict:
+def set_prompt(id: str = "", prompt: str = "", app_dir: str = "") -> dict:
     """Set the stored prompt on a run unconditionally.
 
     Mirrors ``setRunPrompt`` (which is a
@@ -155,7 +155,10 @@ def set_prompt(id: str = "", prompt: str = "") -> dict:
     Args:
         id: the run id to update.
         prompt: the new composed prompt.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

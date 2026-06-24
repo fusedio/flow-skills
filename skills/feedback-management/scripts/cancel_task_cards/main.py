@@ -141,7 +141,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def cancel_task_cards(task: str = "") -> list:
+def cancel_task_cards(task: str = "", app_dir: str = "") -> list:
     """Sweep every pending card on a task to cancelled, in one atomic write.
 
     Mirrors ``cancelTaskCards``: each swept
@@ -151,7 +151,10 @@ def cancel_task_cards(task: str = "") -> list:
 
     Args:
         task: the task id whose pending cards are swept.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("cards")
     cards: list[dict] = doc.get("cards") or []
 

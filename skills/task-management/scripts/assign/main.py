@@ -140,7 +140,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def assign(id: str = "", agent_id: str = "") -> dict:
+def assign(id: str = "", agent_id: str = "", app_dir: str = "") -> dict:
     """Set agentId on a task and promote pending → todo.
 
     Mirrors ``TasksStore.assign_task``.
@@ -148,7 +148,10 @@ def assign(id: str = "", agent_id: str = "") -> dict:
     Args:
         id: the task id to assign.
         agent_id: the agent identifier to assign.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("tasks")
     tasks: list[dict] = doc.get("tasks") or []
 

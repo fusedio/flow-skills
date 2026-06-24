@@ -146,7 +146,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def find_notify_comment(comment_id: str = "") -> dict:
+def find_notify_comment(comment_id: str = "", app_dir: str = "") -> dict:
     """Return a ``notify`` comment by id, or the not-found ack.
 
     Mirrors ``findNotifyComment`` exactly:
@@ -157,7 +157,10 @@ def find_notify_comment(comment_id: str = "") -> dict:
 
     Args:
         comment_id: the cmt_… id to look up; empty string never matches.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not comment_id:
         return {"ok": False, "error": "not found"}
     doc = _load_doc()

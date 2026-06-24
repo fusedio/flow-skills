@@ -16,3 +16,6 @@ dependencies = [
     # (the sandbox shadows that package). Round-trips with the app's npm `yaml`.
     "pyyaml>=6.0",
 ]
+
+[dependency-groups]
+dev = ["pytest>=8"]

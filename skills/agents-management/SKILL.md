@@ -52,13 +52,26 @@ Response shape: `{"data": <result>, "error": null}` on success;
 
 ## The store
 
+The app directory is resolved per operation, highest precedence first:
+
+1. The `app_dir` parameter on any operation (e.g. `read(app_dir="/path/to/app")`) — use this to run the skill standalone against your own store, no environment setup required.
+2. The `$OPENFUSED_APP_DIR_STATE` env var when it names an app directory.
+3. `~/.openfused/app` (default).
+
 ```
-~/.openfused/app/                          # or $OPENFUSED_APP_DIR_STATE
+<app_dir>/                                 # app_dir param, else $OPENFUSED_APP_DIR_STATE, else ~/.openfused/app
 ├── agents/
 │   ├── <slug>/AGENTS.md                   # --- YAML frontmatter --- + prompt body
 │   └── .openfused.yaml                    # schema: openfused/v1; per-slug adapter/model/builtin
 └── agents-seed-ledger.json                # {"slugs":[...]} — keeps a deleted default deleted
 ```
+
+Every operation also accepts an optional `seed_file` string param: the source of
+the default roster seeded on first touch (precedence over `$OPENFUSED_AGENTS_SEED_FILE`).
+When omitted, the built-in five personas in `scripts/seed_agents.json` are seeded as
+today — so existing callers are unaffected. A standalone caller can supply its own
+roster JSON (a list of `{slug,name,title,role,description, adapter?,model?,prompt?}`)
+via `seed_file`.
 
 - `AGENTS.md` is the portable `agentcompanies/v1` base: frontmatter
   `schema/name/title/slug/role/description`, body = the prompt.

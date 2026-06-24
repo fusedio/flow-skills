@@ -409,12 +409,18 @@ def _seed_default_roster() -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def read(slug: str = "") -> list:
+def read(slug: str = "", app_dir: str = "", seed_file: str = "") -> list:
     """Return persona records from the roster, slug-sorted.
 
     Args:
         slug: filter to one persona by slug or derived id; empty returns all.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
+        seed_file: default-roster seed source override (precedence over OPENFUSED_AGENTS_SEED_FILE).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
+    if seed_file:
+        os.environ["OPENFUSED_AGENTS_SEED_FILE"] = seed_file
     _seed_default_roster()
     roster = _load_roster()
     if slug:

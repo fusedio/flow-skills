@@ -141,7 +141,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def update_status(id: str = "", status: str = "") -> dict:
+def update_status(id: str = "", status: str = "", app_dir: str = "") -> dict:
     """Set the status on a task unconditionally.
 
     Mirrors ``TasksStore.update_task_status``. The real method
@@ -151,7 +151,10 @@ def update_status(id: str = "", status: str = "") -> dict:
     Args:
         id: the task id to update.
         status: the new status value.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("tasks")
     tasks: list[dict] = doc.get("tasks") or []
 

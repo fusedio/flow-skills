@@ -137,7 +137,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def read(project: str = "", rev: str = "") -> list:
+def read(project: str = "", rev: str = "", app_dir: str = "") -> list:
     """Return task records from state.json, newest-first by createdAt.
 
     Each row is enriched with the seam-① fields the task-board widget reads: its
@@ -150,7 +150,10 @@ def read(project: str = "", rev: str = "") -> list:
         rev: opaque refresh nonce — the task-board bumps ``$ofTasksRev`` after each
             write to re-resolve (mutate-then-refetch). Ignored; its only job is to
             vary the query so it re-resolves.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     _ = rev  # refresh nonce; intentionally unused
     doc = _load_doc()
     tasks: list[dict] = doc.get("tasks") or []

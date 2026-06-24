@@ -157,7 +157,7 @@ def _save_doc(doc: dict) -> None:
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
 def add_comment(
-    task_id: str = "", author: str = "", body: str = "", kind: str = "", widget: str = ""
+    task_id: str = "", author: str = "", body: str = "", kind: str = "", widget: str = "", app_dir: str = ""
 ) -> dict:
     """Append a new comment to state.json and return the created record.
 
@@ -168,7 +168,10 @@ def add_comment(
         kind: comment kind; "" (default) is a plain ``note``, ``notify`` marks a
             ``notify_user`` FYI the inbox Updates feed surfaces.
         widget: OPTIONAL JSON-UI widget config (a JSON string); "" → no widget.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("comments")
     comments: list[dict] = doc.get("comments") or []
 

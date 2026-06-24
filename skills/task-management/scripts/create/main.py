@@ -172,6 +172,7 @@ def create(
     created_by: str = "user",
     work_mode: str = "standard",
     id: str = "",
+    app_dir: str = "",
 ) -> dict:
     """Create a new task, or return the existing task for a repeated id.
 
@@ -184,7 +185,11 @@ def create(
         created_by: identity of the creator.
         work_mode: work mode (``standard`` or other values).
         id: client-provided task id / idempotency key; empty string mints a new id.
+        app_dir: storage location override; when non-empty, takes precedence over
+            the OPENFUSED_APP_DIR_STATE env var and the ~/.openfused/app default.
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("tasks")
     tasks: list[dict] = doc.get("tasks") or []
 

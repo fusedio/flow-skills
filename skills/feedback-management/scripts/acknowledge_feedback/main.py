@@ -146,7 +146,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def acknowledge_feedback(key: str = "") -> dict:
+def acknowledge_feedback(key: str = "", app_dir: str = "") -> dict:
     """Dedup-append ``key`` to ``dismissedFeedbackKeys``; idempotent.
 
     Mirrors ``acknowledgeFeedbackKey``:
@@ -155,7 +155,10 @@ def acknowledge_feedback(key: str = "") -> dict:
 
     Args:
         key: the synthetic feedback id to acknowledge; empty string is a no-op.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     # An empty key is a no-op ack — nothing to record, nothing to write.
     if not key:
         return {"ok": True, "alreadyAcked": False}

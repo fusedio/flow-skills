@@ -181,6 +181,7 @@ def create_card(
     payload: str = "",
     created_by: str = "",
     source_run_id: str = "",
+    app_dir: str = "",
 ) -> dict:
     """Mint a new pending card and append it to state.json.
 
@@ -204,7 +205,10 @@ def create_card(
         payload: the ``{widget, effectArgs?}`` payload, JSON-encoded.
         created_by: the posting agent's slug; empty → null.
         source_run_id: the run that posted it.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     # payload is JSON at the string boundary; a card with no typed payload is
     # never valid, so an empty/unparseable payload is a hard error.
     if not payload:

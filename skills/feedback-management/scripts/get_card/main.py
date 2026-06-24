@@ -138,12 +138,15 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def get_card(id: str = "") -> dict:
+def get_card(id: str = "", app_dir: str = "") -> dict:
     """Return one interaction-card record by id, or the not-found ack.
 
     Args:
         id: the card_<hex> id to look up; empty string never matches.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     if not id:
         return {"ok": False, "error": "not found"}
     doc = _load_doc()

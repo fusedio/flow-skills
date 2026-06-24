@@ -138,12 +138,15 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def list_cards(task: str = "") -> list:
+def list_cards(task: str = "", app_dir: str = "") -> list:
     """Return interaction-card records from state.json, oldest-first by createdAt.
 
     Args:
         task: task id to filter on; empty string returns all cards.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc()
     cards: list[dict] = doc.get("cards") or []
     if task:

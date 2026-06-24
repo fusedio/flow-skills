@@ -53,11 +53,21 @@ Response shape: `{"data": <result>, "error": null}` on success;
 
 ## The store (differs from task-management)
 
-Path: `~/.openfused/secrets.json` (default) or `$OPENFUSED_SECRETS_FILE` when set.
+Store path resolution, highest precedence first:
+
+1. The `secrets_file` parameter on any operation (e.g. `get(name="x", secrets_file="/path/to/secrets.json")`) — use this to run the skill standalone against your own store, no environment setup required.
+2. The `$OPENFUSED_SECRETS_FILE` env var when set.
+3. `~/.openfused/secrets.json` (default).
+
 Unlike the task-management UDFs — stdlib-only over a *plain-JSON* file — this store
 lives in the **OS keychain**. The keychain item's coordinates are
-`service="openfused"`, `account=<resolved store path>`. The value is a JSON
+`service=<service>`, `account=<resolved store path>`. The value is a JSON
 `name → value` map stored directly in the keychain item — no on-disk file.
+
+The keychain **service name** is likewise resolvable per operation via the optional
+`service` param (precedence over `$OPENFUSED_KEYRING_SERVICE`, default `"openfused"`),
+so two standalone uses on one machine can keep separate namespaces. Both `secrets_file`
+and `service` default to today's values when omitted, so existing callers are unaffected.
 Each UDF therefore depends on `keyring` and inlines the exact keychain-access logic
 of the local secrets backend. Keeping that logic identical is the interop
 contract: a value written by `put` must be readable by `LocalSecretsBackend.get_secret`,
@@ -179,5 +189,6 @@ The local-backend venv materializes at
 - `_save` calls `keyring.set_password` directly (no on-disk file write) to stay
   byte-identical to the backend's writer.
 - Two-writer last-write-wins clobber is accepted in this POC (locking is out of scope).
-- This POC targets the single default store plus the `OPENFUSED_SECRETS_FILE`
-  override; it does **not** resolve a per-env `secrets_file` path.
+- Store path resolves from the per-call `secrets_file` param, else `OPENFUSED_SECRETS_FILE`,
+  else the default; the keychain service name resolves from the per-call `service` param,
+  else `OPENFUSED_KEYRING_SERVICE`, else `"openfused"`.

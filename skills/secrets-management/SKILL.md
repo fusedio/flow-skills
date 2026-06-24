@@ -1,6 +1,7 @@
 ---
 name: secrets-management
 description: Get, put, list, and delete secrets in the local Fernet-encrypted OpenFused secrets store (~/.openfused/secrets.json). Use when managing OpenFused secrets through live UDFs.
+disable-model-invocation: true
 ---
 
 # secrets-management

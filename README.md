@@ -48,3 +48,14 @@ These drive the OpenFused `_core` workspace UDFs — the App state store (tasks,
 | [`feedback-management`](skills/feedback-management/) | Read and write interaction cards — the system of record for HITL decisions. |
 | [`secrets-management`](skills/secrets-management/) | Get, put, list, and delete secrets in the local Fernet-encrypted store. |
 | [`agents-management`](skills/agents-management/) | Create, read, update, delete, clone, and reset agent-roster entries. |
+
+## Customizing & contributing
+
+Two kinds of change, handled in opposite ways — see [`CONTRIBUTING.md`](CONTRIBUTING.md):
+
+- **Changing what a skill *means*** (new defaults, a repurposed op, a
+  team-specific workflow) → **don't edit the shipped skill.** Create a new skill
+  or OpenFused project in **your own workspace** and diverge there.
+- **Fixing a bug or adding to a skill** (doc fix, wrong/missing field, an
+  additive op) → **contribute it back as a PR** so the fix lands upstream instead
+  of living as a local divergence.

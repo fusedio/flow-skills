@@ -1,6 +1,7 @@
 ---
 name: agents-management
 description: Create, read, update, delete, clone, and reset entries in the OpenFused App agent roster (~/.openfused/app/agents/). Use when managing the OpenFused agent roster.
+disable-model-invocation: true
 ---
 
 # agents-management

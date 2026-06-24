@@ -1,6 +1,7 @@
 ---
 name: run-management
 description: Read and write agent run records (and read per-run transcripts) in the OpenFused App store. The durable system of record for runs. Use when inspecting or persisting OpenFused agent run state — status, costs, prompts, transcripts.
+disable-model-invocation: true
 ---
 
 # run-management

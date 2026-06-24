@@ -1,6 +1,7 @@
 ---
 name: task-management
 description: Read, create, assign, and re-status tasks in the OpenFused App task store (~/.openfused/app/state.json) through live UDFs, and render the standalone task-board widget. Use when working with OpenFused tasks, the kanban/task board, or the app's task state.
+disable-model-invocation: true
 ---
 
 # task-management
@@ -47,6 +48,21 @@ curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=task-mana
 Response shape: `{"data": <result>, "error": null}` on success;
 `{"data": null, "error": "<message>"}` on failure.
 
+The two endpoints differ in how `data` is shaped:
+
+- **UDF endpoint** (`/api/exec/udf`) — `data` is the UDF's return value directly
+  (a record dict, an ack dict, or a list). Parse it as documented per op below.
+- **SQL endpoint** (`/api/exec/sql`) — `data` is a **per-query envelope keyed by
+  query id**, not the row list. A single query lands under `q0`:
+  `{"data": {"q0": {"columns": [...], "rows": [<task>, ...]}}, "error": null}`.
+  The task records are at **`data.q0.rows`** (column names at `data.q0.columns`).
+  Read them with `data["q0"]["rows"]`, not `data` directly.
+
+> Note: some environments intercept raw `curl` (e.g. a context-mode hook that
+> redirects it). If `curl` is blocked, issue the same POST from whatever
+> sandboxed-exec tool is available — the request body and response shape are
+> identical.
+
 ## State file
 
 Path: `~/.openfused/app/state.json` (default) or
@@ -74,6 +90,11 @@ to one project slug; empty string returns all projects.
 
 SQL shorthand: `SELECT * FROM {{read}}` (no `project` override needed; pass an
 `overrides: {"project": "..."}` to scope to one project, or filter in SQL).
+
+Columns returned (via the SQL endpoint, under `data.q0`): `id`, `project`,
+`number`, `title`, `description`, `status`, `agentId`, `createdBy`, `createdAt`,
+`updatedAt`, `parentId`, `workMode`, `blockedBy`, `runs`, plus the derived
+`isLive` (bool) and `liveRunCount` (int) live-run rollups.
 
 ### create
 

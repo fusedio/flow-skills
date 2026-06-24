@@ -53,3 +53,17 @@ tasks, runs, feedback, secrets, or agent roster:
 - **`feedback-management`** — interaction cards (HITL decisions).
 - **`secrets-management`** — the local encrypted secrets store.
 - **`agents-management`** — the agent roster.
+
+## Customizing or fixing a skill
+
+Before editing any skill in this repo, pick the right path (see `CONTRIBUTING.md`):
+
+- **Changing what a skill *means*** — different defaults, a repurposed UDF op, a
+  team-specific workflow — **do not modify the shipped skill in place.** Create a
+  new skill or OpenFused project in the user's own workspace and diverge there;
+  an in-place meaning change affects everyone who loads this plugin and is lost
+  on the next pull. Tell the user this and author the new skill/project instead.
+- **Fixing a bug or making an additive improvement** — a doc fix, a wrong/missing
+  field, a clarified caveat, a genuinely additive op — **contribute it back as a
+  PR** (branch off `main`, focused change, behavior-preserving). Tell the user to
+  upstream it rather than keep a local divergence.

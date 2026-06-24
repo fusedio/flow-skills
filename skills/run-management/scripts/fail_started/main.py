@@ -146,7 +146,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def fail_started(error_message: str = "") -> dict:
+def fail_started(error_message: str = "", app_dir: str = "") -> dict:
     """Fail every run currently ``status == "started"``.
 
     Mirrors the run sweep in ``recoverOrphans``:
@@ -155,7 +155,10 @@ def fail_started(error_message: str = "") -> dict:
 
     Args:
         error_message: failure message stamped on each swept run; empty → null.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

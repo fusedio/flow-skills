@@ -234,7 +234,7 @@ def _write_transcripts(transcripts: dict) -> dict:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def bulk_seed(runs: str = "", transcripts: str = "") -> dict:
+def bulk_seed(runs: str = "", transcripts: str = "", app_dir: str = "") -> dict:
     """Insert run records + per-run transcripts VERBATIM, idempotent by id/file.
 
     The seed/restore counterpart of ``create``: it never mints ids/timestamps/
@@ -246,7 +246,10 @@ def bulk_seed(runs: str = "", transcripts: str = "") -> dict:
         runs: JSON array of full ``RunRecord`` dicts (insert-if-absent by ``id``).
         transcripts: JSON object ``{runId: [event, …]}`` written one event per
             line to ``runs/<runId>.ndjson``, path-confined to ``runs/``.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     run_records = _parse_list(runs, "runs")
 
     raw_transcripts = json.loads(transcripts) if transcripts else {}

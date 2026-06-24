@@ -145,7 +145,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def cancel_queued(error_message: str = "") -> dict:
+def cancel_queued(error_message: str = "", app_dir: str = "") -> dict:
     """Cancel every run currently ``status == "queued"`` (boot orphan sweep).
 
     Each swept run gets ``status="cancelled"``, ``finishedAt=now``, and the given
@@ -153,7 +153,10 @@ def cancel_queued(error_message: str = "") -> dict:
 
     Args:
         error_message: message stamped on each swept run; empty → null.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

@@ -143,7 +143,7 @@ def _save_doc(doc: dict) -> None:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def mark_started(id: str = "") -> dict:
+def mark_started(id: str = "", app_dir: str = "") -> dict:
     """Flip a run's ``status`` to ``"started"`` (the launch promotion).
 
     Non-terminal: ``finishedAt`` is left untouched (only ``finish`` stamps it).
@@ -151,7 +151,10 @@ def mark_started(id: str = "") -> dict:
 
     Args:
         id: the run id to promote.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

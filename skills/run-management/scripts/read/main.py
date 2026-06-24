@@ -162,13 +162,16 @@ def _parse_task_ids(raw: str) -> list[str]:
 
 
 @udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def read(task_ids: str = "") -> list:
+def read(task_ids: str = "", app_dir: str = "") -> list:
     """Return run records from state.json, oldest-first by createdAt.
 
     Args:
         task_ids: JSON array string or comma-separated list of task ids to filter
             on; empty string returns all runs across all tasks.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc()
     runs: list[dict] = doc.get("runs") or []
     # An empty param string means "no filter" (all runs); a present param — even

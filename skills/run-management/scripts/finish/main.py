@@ -167,6 +167,7 @@ def finish(
     cost_usd: str = "",
     usage_json: str = "",
     model: str = "",
+    app_dir: str = "",
 ) -> dict:
     """Stamp a terminal transition on a run unconditionally.
 
@@ -185,7 +186,10 @@ def finish(
         cost_usd: cost in USD (``float``); empty → null.
         usage_json: JSON usage object; empty → null.
         model: model id; empty → null.
+        app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
+    if app_dir:
+        os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 

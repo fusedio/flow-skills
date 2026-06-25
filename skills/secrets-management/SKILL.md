@@ -9,9 +9,9 @@ disable-model-invocation: true
 The local secrets store exposed as live UDFs. Reads and writes the **same**
 OS-keychain store as `LocalSecretsBackend` (`~/.openfused/secrets.json`, or the
 path named by `OPENFUSED_SECRETS_FILE` — used as the keychain account key) — so
-this surface, the `openfused secrets` CLI, and the in-sandbox `get_secret` shim
+this surface, the `fused secrets` CLI, and the in-sandbox `get_secret` shim
 all share one live store. An agent drives these UDFs over the local execution
-layer started with `openfused dev serve`.
+layer started with `fused dev serve`.
 
 ## What this project is
 
@@ -24,11 +24,11 @@ The split is: **read via SQL** (`{{list}}`, `{{get}}`), **write via UDF**
 
 ## Access pattern
 
-Start the local execution layer. `openfused dev serve` binds a loopback server,
+Start the local execution layer. `fused dev serve` binds a loopback server,
 prints ONE JSON handshake line, then runs in the foreground:
 
 ```
-openfused dev serve
+fused dev serve
 {"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
 # Export the origin + token from that handshake line:
@@ -139,7 +139,7 @@ to `~/.openfused/core/secrets-management/widgets/secrets_table.json`, so it is
 available on first run with no authoring step — open it with:
 
 ```bash
-openfused widget open ~/.openfused/core/secrets-management/widgets/secrets_table.json
+fused widget open ~/.openfused/core/secrets-management/widgets/secrets_table.json
 ```
 
 The shipped config:
@@ -158,7 +158,7 @@ The shipped config:
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
 > resolve context, which today means the In-Loop app's dev serve
-> (`openfused dev serve` / `openfused inloop`). The deployed-serve bundle has no
+> (`fused dev serve` / `fused inloop`). The deployed-serve bundle has no
 > `_core` resolve context, so a public URL is not supported for this widget.
 
 ## Layout (skill-folder convention)
@@ -172,7 +172,7 @@ scripts/
 └── delete/ {main.py, spec.md}
 ```
 
-Source lives in the wheel under `openfused/_core/secrets-management/` (read-only).
+Source lives in the wheel under `fused/_core/secrets-management/` (read-only).
 The local-backend venv materializes at
 `~/.openfused/core/secrets-management/scripts/.venv` on first startup. Adding a new op
 = add `scripts/<name>/{main.py,spec.md}`.

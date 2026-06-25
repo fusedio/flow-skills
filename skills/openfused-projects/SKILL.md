@@ -1,6 +1,6 @@
 ---
 name: openfused-projects
-description: The canonical end-to-end guide for an agent driving OpenFused — pick an environment, create a project, decompose a task into UDFs, author specs and code, validate + commit, run/preview locally (often as a rendered widget), and deploy through preview to release. Code is authored by the driving agent (no codegen command, no API key); openfused supplies validation, the spec↔code pairing hook, and run/deploy. Use to take a user request from prompt to a running, viewable result.
+description: The canonical end-to-end guide for an agent driving OpenFused — pick an environment, create a project, decompose a task into UDFs, author specs and code, validate + commit, run/preview locally (often as a rendered widget), and deploy through preview to release. Code is authored by the driving agent (no codegen command, no API key); fused supplies validation, the spec↔code pairing hook, and run/deploy. Use to take a user request from prompt to a running, viewable result.
 ---
 
 # Driving OpenFused end-to-end (spec-first, agent-authored)
@@ -13,7 +13,7 @@ authoring code *is your job*.
 
 > **Built-in `_core` workspace.** OpenFused ships a read-only `_core` workspace
 > inside the wheel (no setup required). Its projects (e.g. `task-management`) are
-> available immediately via `openfused dev serve` as
+> available immediately via `fused dev serve` as
 > `workspace="_core", project="task-management"`. User projects live in the
 > `default` workspace (or any named workspace) — `_core` (and any name starting
 > with `_`) is reserved and cannot be created by users.
@@ -28,7 +28,7 @@ user request
       → author main.py / main.json yourself
         → verify_code → git commit (the pairing hook keeps spec+code in sync)
           → run / preview locally (data, or a rendered widget)
-            → view in the app (openfused inloop)
+            → view in the app (fused inloop)
               → deploy to preview → promote to release (AWS)
 ```
 
@@ -50,7 +50,7 @@ py-UDF-computes → json-widget-renders pattern.
 > | Commit (spec+code together) | `git commit` — the pre-commit hook enforces pairing |
 > | Inspect a project / sync manifest | MCP `project_show` (re-syncs `[udfs.*]` from disk) / CLI `project show` (context packet; lists UDFs but does not rewrite the manifest) |
 > | Run / test code | MCP `execute_code`/`test_code` **or** CLI `code run`/`code test` |
-> | Preview a widget | **CLI/app only** (`widget open`, the parley, `openfused inloop`) — no MCP |
+> | Preview a widget | **CLI/app only** (`widget open`, the parley, `fused inloop`) — no MCP |
 > | Deploy/promote/rollback | MCP (`--enable-infra`) **or** CLI |
 
 ---
@@ -61,12 +61,12 @@ You do not need a cloud account to build and preview. For development, use the
 **local** backend (code runs in a project venv on the host):
 
 ```sh
-openfused env create dev --backend local
+fused env create dev --backend local
 ```
 
 AWS is the production target (deploys UDFs to stable URLs); set it up later via
 the **openfused-setup** skill. **Resolution:** if more than one env exists,
-nothing is auto-selected — pin the project (`openfused project set <project>
+nothing is auto-selected — pin the project (`fused project set <project>
 --env dev`) or pass `--env`/`OPENFUSED_ENV`. Verify with
 `get_project_context` (`environment.resolved_env`).
 
@@ -88,9 +88,9 @@ widget UDF on top**:
 > **Where the widget lives decides where it renders.** The app's project surface
 > live-renders only **saved dashboards** at `widgets/<stem>.json`; a `json` UDF
 > (`scripts/<name>/main.json`) is the **deployable** form and shows as *source* there.
-> So when the goal is "the human views the dashboard in `openfused inloop`", author the
+> So when the goal is "the human views the dashboard in `fused inloop`", author the
 > widget as `widgets/<stem>.json` — not a `json` UDF. Reach for a `json` UDF only
-> when you need a deployable widget URL (preview it with `openfused widget open`).
+> when you need a deployable widget URL (preview it with `fused widget open`).
 > See **openfused-widgets** › "What a widget is".
 
 Each UDF is one independent capability — lean small. Slugs:
@@ -101,7 +101,7 @@ Each UDF is one independent capability — lean small. Slugs:
 ## Step 2 — Create the project
 
 ```sh
-openfused project new taxi-pipeline        # or MCP: project_new("taxi-pipeline")
+fused project new taxi-pipeline        # or MCP: project_new("taxi-pipeline")
 ```
 
 Scaffolds `openfused.toml`, `SKILL.md`, and the
@@ -120,8 +120,8 @@ no network), the project is still created and `project new` **returns a warning*
 **If you see a seeding warning (or you need more deps), extend the venv before the run step.** Use `project add-dep`, which runs `uv add` + `uv sync` in one step so the venv is never left stale (a bare `uv add` would trip the stale-venv warning until the next `uv sync`):
 
 ```sh
-openfused project add-dep taxi-pipeline duckdb pandas       # UDF-specific runtime deps
-openfused project add-dep taxi-pipeline pytest coverage --dev  # only if you'll run `code test`
+fused project add-dep taxi-pipeline duckdb pandas       # UDF-specific runtime deps
+fused project add-dep taxi-pipeline pytest coverage --dev  # only if you'll run `code test`
 ```
 
 (Equivalent manual form: `cd …/taxi-pipeline/scripts && uv add … && uv sync`. A stale venv left by a bare `uv add` is auto-reconciled on the next local `execute_code`/`code test` anyway — unless `OPENFUSED_NO_VENV_SYNC` is set — but `add-dep` keeps it clean up front.)
@@ -164,7 +164,7 @@ them in a widget**, the same way the UI's spec-review gate does, rather than
 pasting the spec prose into the chat. Specs are the human-review surface; make
 that surface a real rendered review, not a wall of text.
 
-Write a **spec-review widget** and put it in front of the human with `openfused
+Write a **spec-review widget** and put it in front of the human with `fused
 widget open` (the CLI/standalone analog of the architect's `ask_user` gate).
 Mirror what the UI does:
 
@@ -199,7 +199,7 @@ Mirror what the UI does:
 (Step 5). On **`request-changes`** (or any feedback) → edit the specs and re-open a
 fresh review widget; loop until approved. Summarise if multiple UDFs are pending.
 
-> **In-app worker exception.** An agent spawned by the `openfused up` app does this
+> **In-app worker exception.** An agent spawned by the `fused up` app does this
 > through the teamwork MCP, not `widget open`: the architect runs the `ask_user`
 > spec-review gate by authoring ONE complete widget (the plan body as `text`, a
 > `diff` node per changed spec file, and the approve/request-changes buttons — no
@@ -243,7 +243,7 @@ Validate the code through the deterministic scanners (AST code scanner, dep
 scanner, input firewall), then commit the spec+entrypoint **together**:
 
 ```sh
-openfused code verify scripts/taxi-analysis/main.py        # or MCP verify_code(...)
+fused code verify scripts/taxi-analysis/main.py        # or MCP verify_code(...)
 git -C ~/.openfused/workspaces/default add taxi-pipeline/scripts/taxi-analysis/
 git -C ~/.openfused/workspaces/default commit -m "taxi-analysis: spec + impl"
 ```
@@ -278,7 +278,7 @@ A missing/incomplete `.venv` raises a guided error telling you to `uv sync`.
 **Run a `py` UDF** (see its output as data):
 
 ```sh
-openfused code run scripts/taxi-analysis/main.py --project taxi-pipeline
+fused code run scripts/taxi-analysis/main.py --project taxi-pipeline
 # or MCP: execute_code(code=<main.py contents>, project="taxi-pipeline")
 ```
 
@@ -286,18 +286,18 @@ openfused code run scripts/taxi-analysis/main.py --project taxi-pipeline
 
 **Preview a widget** (the result comes back as a rendered widget, not rows). A
 **saved dashboard** (`widgets/<stem>.json`) renders in the app's Widget tab
-(`openfused inloop`, Step 8) or via `widget open widgets/<stem>.json`. A **`json` UDF**
+(`fused inloop`, Step 8) or via `widget open widgets/<stem>.json`. A **`json` UDF**
 (`scripts/<name>/main.json`) is *not* live-rendered on the project surface — preview
 it with `widget open scripts/<name>/main.json` or the parley (standing loop). To
 self-verify a widget resolves *headlessly* before showing a human, drive the
 resolve daemon — recipe in **openfused-widgets**.
 
 > **You open the widget — don't tell the user to** (CLI / standalone flow). After
-> authoring and self-verifying the file, *run* `openfused widget open <file>`
+> authoring and self-verifying the file, *run* `fused widget open <file>`
 > yourself (it launches/reuses the app, opens the browser, and blocks until the
 > human responds, returning their reply). Ending your turn with "open it in
-> `openfused up`" strands the human — drive the surface and bring back the result.
-> **Exception — an agent spawned by the `openfused up` app** (an architect/worker
+> `fused up`" strands the human — drive the surface and bring back the result.
+> **Exception — an agent spawned by the `fused up` app** (an architect/worker
 > run) must NOT run `widget open`/`up`/the parley (they wait on a human and would
 > hang the run): it writes `widgets/<stem>.json`, the app live-renders it, and it
 > asks for feedback via `ask_user` (the single human-ask tool). See **openfused-widgets** › the
@@ -307,33 +307,33 @@ resolve daemon — recipe in **openfused-widgets**.
 
 ## Step 8 — View in the app
 
-`openfused inloop` is the local web UI — its **Widget** tab renders a project's **saved
+`fused inloop` is the local web UI — its **Widget** tab renders a project's **saved
 dashboards** (`widgets/<stem>.json`) natively, and it hosts agent runs. (A `json`
 UDF (`scripts/<name>/main.json`) shows under the UDF drill-in as source, not a
 live render — see Step 7 to preview one.)
 
 ```sh
-openfused inloop            # bundled app (needs Node 20+); http://127.0.0.1:4400
-openfused inloop --dev      # vite + tsx watch (source checkout + pnpm/npm)
+fused inloop            # bundled app (needs Node 20+); http://127.0.0.1:4400
+fused inloop --dev      # vite + tsx watch (source checkout + pnpm/npm)
 ```
 
 Default (bundled) ships inside the wheel — no checkout needed. `--dev` is
 source-only. See **openfused-cli** for the local-servers inventory.
 
 > If `widget open`/`up` errors that an *incompatible app* is running on the port,
-> an older `openfused inloop` is occupying it — stop that process and retry.
+> an older `fused inloop` is occupying it — stop that process and retry.
 
 ---
 
 ## Step 9 — Deploy to preview (AWS)
 
 Prerequisites (AWS only): an AWS env with `cache_bucket`, resolved for this
-project, and a provisioned serving plane (`openfused infra serve`). Verify the
-resolved env first (`openfused project show` → `environment.resolved_env`).
+project, and a provisioned serving plane (`fused infra serve`). Verify the
+resolved env first (`fused project show` → `environment.resolved_env`).
 
 ```sh
-openfused project deploy taxi-pipeline                  # all UDFs → preview
-openfused udf deploy taxi-analysis --project taxi-pipeline
+fused project deploy taxi-pipeline                  # all UDFs → preview
+fused udf deploy taxi-analysis --project taxi-pipeline
 ```
 
 A `py` UDF deploys to an HTTP route; a **`json` widget UDF deploys to a rendered
@@ -348,8 +348,8 @@ Via MCP (`--enable-infra`): `udf_deploy("taxi-analysis", project="taxi-pipeline"
 ## Step 10 — Promote to release
 
 ```sh
-openfused project promote taxi-pipeline
-openfused udf promote taxi-analysis --project taxi-pipeline
+fused project promote taxi-pipeline
+fused udf promote taxi-analysis --project taxi-pipeline
 ```
 
 Repoints release to whatever commit preview runs; the release URL is stable from
@@ -377,7 +377,7 @@ commit.
 
 ### The env is resolved per project — verify before deploying
 Every deploy/promote/rollback echoes `env: <name>`. If it is wrong, pin
-(`openfused project set <project> --env <name>`) or override (`--env` /
+(`fused project set <project> --env <name>`) or override (`--env` /
 `OPENFUSED_ENV`). With a single env it auto-selects; with several you must pin.
 
 ### Deploy to preview first; promote to release
@@ -386,19 +386,19 @@ The two-channel model exists so code passes through preview before release.
 URL.
 
 ### Retiring a UDF
-`openfused udf retire <udf> --project <p> --yes` revokes both channel mounts and
+`fused udf retire <udf> --project <p> --yes` revokes both channel mounts and
 drops the UDF from the cloud snapshot (the on-disk folder stays). Destructive
 (`--enable-destructive` on MCP). A UDF present in the cloud snapshot but absent
 on disk shows as **orphaned** in `project status`.
 
-### Charts use openfused components — never Vega-Lite / Plotly / matplotlib
+### Charts use fused components — never Vega-Lite / Plotly / matplotlib
 
 A dashboard widget is a `{"type": <component>, "props": {…}}` JSON file in
-`widgets/`. The `type` MUST be a built-in openfused component — charts are
+`widgets/`. The `type` MUST be a built-in fused component — charts are
 `line-chart`, `bar-chart`, `stacked-bar-chart`, `stacked-area-chart`,
 `scatter-chart`, `donut-chart`, `heatmap-chart` (plus `metric`, `sql-table`,
 `text`, `html`, inputs, …). **Do NOT** emit a Vega-Lite / Vega / Plotly /
-matplotlib spec or inline a data array — those are not openfused components and
+matplotlib spec or inline a data array — those are not fused components and
 render as `unknown component: <type>`. The supported set is generated from the
 widgets package (`components.json`, the hard type gate); when unsure, read
 the component catalog in the **openfused-widgets** skill rather than guessing.
@@ -433,5 +433,5 @@ There is **no codegen MCP tool** — authoring is `Write` + `verify_code` + `git
 
 - **openfused-widgets** — authoring + previewing widgets (the usual "result").
 - **openfused-execute** — `execute_code`/`code run` patterns (libraries, S3, secrets).
-- **openfused-setup** — install + AWS env provisioning; launching `openfused inloop`.
+- **openfused-setup** — install + AWS env provisioning; launching `fused inloop`.
 - **openfused-cli** — full command/flag reference and the local-servers inventory.

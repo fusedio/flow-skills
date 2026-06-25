@@ -1,9 +1,9 @@
 ---
 name: openfused-setup
-description: Step-by-step guide for installing and setting up openfused for the first time, including AWS credential checks, detecting an existing installation, provisioning infrastructure, and verifying the setup. Use when a user asks how to install, configure, or get started with openfused.
+description: Step-by-step guide for installing and setting up fused for the first time, including AWS credential checks, detecting an existing installation, provisioning infrastructure, and verifying the setup. Use when a user asks how to install, configure, or get started with openfused.
 ---
 
-# Setting up openfused
+# Setting up fused
 
 ## Overview
 
@@ -42,14 +42,14 @@ Expected output:
 
 **Confirm the Account ID is correct** before proceeding. Provisioning into the wrong account will leave orphaned resources.
 
-### 1b. Check for an existing openfused installation
+### 1b. Check for an existing fused installation
 
 ```sh
-openfused env list
+fused env list
 ```
 
-- If the command is not found: openfused is not installed → proceed to Phase 2.
-- If it runs but shows no environments: openfused is installed but not configured → skip to Phase 3.
+- If the command is not found: fused is not installed → proceed to Phase 2.
+- If it runs but shows no environments: fused is installed but not configured → skip to Phase 3.
 - If it shows environments: **read Phase 1c before touching anything.**
 
 ### 1c. Existing installation — understand what's already there
@@ -57,7 +57,7 @@ openfused env list
 If environments are listed, check the current AWS state before making changes:
 
 ```sh
-openfused infra plan
+fused infra plan
 ```
 
 Read the output carefully:
@@ -70,34 +70,34 @@ Read the output carefully:
 
 If you need full config details for a specific environment:
 ```sh
-openfused env show <name>      # JSON dump of stored config
-openfused env show             # config for the resolved environment
+fused env show <name>      # JSON dump of stored config
+fused env show             # config for the resolved environment
 ```
 
 ---
 
 ## Phase 2 — Install
 
-**Working inside the openfused repo** (development):
+**Working inside the fused repo** (development):
 ```sh
 uv sync --all-extras
-uv run openfused --version   # prefix all openfused commands with `uv run`
+uv run fused --version   # prefix all fused commands with `uv run`
 ```
 
 **Installing into another project or environment**:
 ```sh
 # uv
-uv add openfused
+uv add fused
 
 # pip
-pip install openfused
+pip install fused
 ```
 
-> All `openfused` commands below assume the package is on `PATH`. If working inside this repo, prefix every `openfused ...` command with `uv run`: e.g. `uv run openfused env list`.
+> All `fused` commands below assume the package is on `PATH`. If working inside this repo, prefix every `fused ...` command with `uv run`: e.g. `uv run fused env list`.
 
-> **Single package — the app is included.** A normal install (`uv add` / `pip install openfused`) carries the whole product: the MCP server, the CLI, and the `openfused inloop` app (UI + server bundled in). No second install, sibling checkout, or `node_modules` is needed. The only extra requirement is **Node 20+** on PATH to *run* `openfused inloop` (the bare MCP server and CLI data-plane don't need Node). Building the package from source additionally needs pnpm + npm.
+> **Single package — the app is included.** A normal install (`uv add` / `pip install fused`) carries the whole product: the MCP server, the CLI, and the `fused inloop` app (UI + server bundled in). No second install, sibling checkout, or `node_modules` is needed. The only extra requirement is **Node 20+** on PATH to *run* `fused inloop` (the bare MCP server and CLI data-plane don't need Node). Building the package from source additionally needs pnpm + npm.
 
-> **First run seeds a sample project.** The very first `openfused up` / `openfused onboard` on a fresh **local** install lands a finished, ready-to-explore showcase project — **`nyc-street-names`** (a complete worked example: a UDF + a dashboard widget + a populated task/run history) — *beside* the one the onboarding wizard helps you create. So a brand-new user opens the app to a real project, not an empty board, and ends up with two projects. It seeds **once** (gated on a stamp + a fresh onboarding flag), is idempotent and non-clobbering, and never blocks boot. To opt out of the seed entirely, set **`OPENFUSED_SEED_PREBUILT=0`**. (Cloud-backend installs skip it.)
+> **First run seeds a sample project.** The very first `fused up` / `fused onboard` on a fresh **local** install lands a finished, ready-to-explore showcase project — **`nyc-street-names`** (a complete worked example: a UDF + a dashboard widget + a populated task/run history) — *beside* the one the onboarding wizard helps you create. So a brand-new user opens the app to a real project, not an empty board, and ends up with two projects. It seeds **once** (gated on a stamp + a fresh onboarding flag), is idempotent and non-clobbering, and never blocks boot. To opt out of the seed entirely, set **`OPENFUSED_SEED_PREBUILT=0`**. (Cloud-backend installs skip it.)
 
 ---
 
@@ -111,9 +111,9 @@ You do **not** need a cloud account to get started. Pick by what's available:
 |---|---|---|---|
 | **AWS** | `aws` | AWS credentials, plus Docker to build the Lambda container image (or `--builder codebuild` to build remotely without it) | Production and horizontal scale |
 | **Local** | `local` | nothing — host venvs via uv/pip, no cloud | The fastest start; local dev/CI. No isolation boundary: code runs directly on the host |
-| **Fused** | `fused` | A Fused-managed openfused environment + an API key (guided onboarding flow) | Running code on a remote, managed openfused that Fused provisions and operates — the local side provisions nothing |
+| **Fused** | `fused` | A Fused-managed fused environment + an API key (guided onboarding flow) | Running code on a remote, managed fused that Fused provisions and operates — the local side provisions nothing |
 
-AWS Lambda execution is **container-only**: packages (`duckdb`, `polars`, `h3`, etc.) are baked into an ECR image via `openfused infra build-image`, and that image is the Lambda function's code. There is no runtime fallback — until an image is built and configured, `execute_code` fails with a clear error telling you to run `infra build-image`. Per-call requirements are never pip-installed at invocation time.
+AWS Lambda execution is **container-only**: packages (`duckdb`, `polars`, `h3`, etc.) are baked into an ECR image via `fused infra build-image`, and that image is the Lambda function's code. There is no runtime fallback — until an image is built and configured, `execute_code` fails with a clear error telling you to run `infra build-image`. Per-call requirements are never pip-installed at invocation time.
 
 ### AWS environment
 
@@ -121,14 +121,14 @@ Before running this, confirm the AWS account from Phase 1a is the right target.
 
 ```sh
 # 1. Create the environment (provisions IAM role, S3 cache bucket, ECR repo)
-openfused env create prod --backend aws --prefix myapp- --no-provision
-openfused infra plan    # review what will be created
+fused env create prod --backend aws --prefix myapp- --no-provision
+fused infra plan    # review what will be created
 
 # 2. Build the Docker image and push to ECR
-openfused infra build-image
+fused infra build-image
 
 # 3. Apply — creates IAM role, S3 bucket, ECR repo, and the Lambda function
-openfused infra apply
+fused infra apply
 ```
 
 The `image_build` config in `~/.openfused/envs.json` controls which Python packages and system deps go into the image. Edit it before building:
@@ -147,7 +147,7 @@ The `image_build` config in `~/.openfused/envs.json` controls which Python packa
 ### Local environment (no AWS required — good for testing and development)
 
 ```sh
-openfused env create dev --backend local
+fused env create dev --backend local
 ```
 
 No AWS — code runs on the user's own machine, in a subprocess. Scaffolds
@@ -158,7 +158,7 @@ Third-party dependencies belong to a workflow's `pyproject.toml` (managed by
 
 ```sh
 # Provision dirs up front (otherwise lazy on first call)
-openfused infra apply
+fused infra apply
 ```
 
 Cloud credentials need no configuration: the execution subprocess **inherits the
@@ -174,7 +174,7 @@ The prefix (`--prefix`) scopes all AWS resources: IAM role, Lambda functions, Se
 
 | Prefix | IAM role | Cache bucket |
 |---|---|---|
-| `openfused-` (default) | `openfused` | `openfused-cache` |
+| `openfused-` (default) | `fused` | `openfused-cache` |
 | `myapp-` | `myapp` | `myapp-cache` |
 | `myapp-staging-` | `myapp-staging` | `myapp-staging-cache` |
 
@@ -197,7 +197,7 @@ See the `openfused-infra` skill for the complete permissions list.
 ### 4a. Confirm no infrastructure drift (AWS only)
 
 ```sh
-openfused infra plan
+fused infra plan
 ```
 
 All lines should show `ok`. If any show `CREATE` or `UPDATE`, run `infra apply` to converge. For local environments, `infra plan` instead reports the data/secrets/venvs directories and the packages venv.
@@ -205,7 +205,7 @@ All lines should show `ok`. If any show `CREATE` or `UPDATE`, run `infra apply` 
 ### 4b. Run a smoke test
 
 ```sh
-openfused code run -c "result = 1 + 1"
+fused code run -c "result = 1 + 1"
 ```
 
 Expected output:
@@ -220,14 +220,14 @@ result: 2
 ### 4c. Confirm environment selection
 
 ```sh
-openfused env list           # lists all envs with their backend
-openfused env show <name>    # full config for a named env
+fused env list           # lists all envs with their backend
+fused env show <name>    # full config for a named env
 ```
 
 With a **single environment**, commands resolve it automatically (sole-env auto).
 With **multiple environments**, pass `--env <name>` or pin a project:
 ```sh
-openfused project set my-project --env <name>   # writes default_env to openfused.toml
+fused project set my-project --env <name>   # writes default_env to openfused.toml
 ```
 `OPENFUSED_ENV=<name>` is a process-wide override that beats the manifest pin.
 
@@ -235,26 +235,26 @@ openfused project set my-project --env <name>   # writes default_env to openfuse
 
 ## Common issues
 
-### `openfused infra plan` shows CREATE after `env create`
+### `fused infra plan` shows CREATE after `env create`
 
-This is expected when `--no-provision` was used. Run `openfused infra apply` to provision.
+This is expected when `--no-provision` was used. Run `fused infra apply` to provision.
 
 ### IAM role already exists from a previous install
 
 `infra apply` is idempotent — it updates the policy to match the desired state and does not error on an existing role.
 
-If you want to reuse an existing role rather than let openfused manage it:
+If you want to reuse an existing role rather than let fused manage it:
 ```sh
-openfused env create prod --backend aws --role-arn arn:aws:iam::123456789012:role/my-existing-role --no-provision
+fused env create prod --backend aws --role-arn arn:aws:iam::123456789012:role/my-existing-role --no-provision
 ```
 
 ### S3 bucket name conflict
 
 If bucket creation fails with a naming conflict, supply an explicit name:
 ```sh
-openfused env create prod --backend aws --cache-bucket my-unique-bucket-name
+fused env create prod --backend aws --cache-bucket my-unique-bucket-name
 # or suppress the cache bucket entirely:
-openfused env create prod --backend aws --no-cache-bucket
+fused env create prod --backend aws --no-cache-bucket
 ```
 
 ### First `execute_code` call times out
@@ -267,7 +267,7 @@ Image builds use **AWS CodeBuild by default** (no local Docker). You'd only hit 
 
 ### `UvNotFoundError` on the local backend
 
-A local env with `installer="uv"` requires the `uv` CLI. Install uv (https://docs.astral.sh/uv/getting-started/installation/) or switch the env to pip: `openfused env update <name> --installer pip`. The default `installer="auto"` never raises this — it falls back to pip silently.
+A local env with `installer="uv"` requires the `uv` CLI. Install uv (https://docs.astral.sh/uv/getting-started/installation/) or switch the env to pip: `fused env update <name> --installer pip`. The default `installer="auto"` never raises this — it falls back to pip silently.
 
 ---
 
@@ -276,8 +276,8 @@ A local env with `installer="uv"` requires the `uv` CLI. Install uv (https://doc
 **Always check `infra plan` before teardown to understand what will be deleted.**
 
 ```sh
-openfused infra plan         # review current state first
-openfused infra teardown     # prompts for confirmation
+fused infra plan         # review current state first
+fused infra teardown     # prompts for confirmation
 ```
 
 `infra teardown` removes:
@@ -293,10 +293,10 @@ openfused infra teardown     # prompts for confirmation
 
 To also remove the env config:
 ```sh
-openfused env delete prod --yes    # config only; does not touch AWS
+fused env delete prod --yes    # config only; does not touch AWS
 ```
 
 **Always confirm with the user before running `infra teardown`.** It deletes Lambda functions and the IAM role. Recreating them takes ~30 s, but:
 
-- Any IAM policies added to the role outside of openfused will be lost — openfused only restores its own managed inline policy.
+- Any IAM policies added to the role outside of fused will be lost — fused only restores its own managed inline policy.
 - If the role was granted access to external resources (S3 bucket policies, KMS key policies, cross-account trusts, SQS/SNS resource policies, EC2 instance profiles), those associations reference the role's internal unique ID. Deleting the role breaks those associations — even if the role is recreated with the same name and ARN, the new role has a different identity and will not inherit the external grants.

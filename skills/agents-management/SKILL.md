@@ -9,7 +9,7 @@ disable-model-invocation: true
 The App **agent roster** exposed as live UDFs. These UDFs are the **sole owner**
 of the file tree `~/.openfused/app/agents/`: they own this local roster store,
 and an agent drives them over the local execution layer started with
-`openfused dev serve`.
+`fused dev serve`.
 
 ## What this project is
 
@@ -27,11 +27,11 @@ Both endpoints are addressed with `?t=<token>&workspace=_core&project=agents-man
 
 ## Access pattern
 
-Start the local execution layer. `openfused dev serve` binds a loopback server,
+Start the local execution layer. `fused dev serve` binds a loopback server,
 prints ONE JSON handshake line, then runs in the foreground:
 
 ```
-openfused dev serve
+fused dev serve
 {"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
 # Export the origin + token from that handshake line:
@@ -62,7 +62,7 @@ The app directory is resolved per operation, highest precedence first:
 <app_dir>/                                 # app_dir param, else $OPENFUSED_APP_DIR_STATE, else ~/.openfused/app
 ├── agents/
 │   ├── <slug>/AGENTS.md                   # --- YAML frontmatter --- + prompt body
-│   └── .openfused.yaml                    # schema: openfused/v1; per-slug adapter/model/builtin
+│   └── .openfused.yaml                    # schema: fused/v1; per-slug adapter/model/builtin
 └── agents-seed-ledger.json                # {"slugs":[...]} — keeps a deleted default deleted
 ```
 
@@ -179,7 +179,7 @@ to `~/.openfused/core/agents-management/widgets/agents_table.json`, so it is
 available on first run with no authoring step — open it with:
 
 ```bash
-openfused widget open ~/.openfused/core/agents-management/widgets/agents_table.json
+fused widget open ~/.openfused/core/agents-management/widgets/agents_table.json
 ```
 
 The shipped config:
@@ -203,7 +203,7 @@ This is a **read-only** view — the roster's writes (`create`/`update`/`delete`
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
 > resolve context, which today means the In-Loop app's dev serve
-> (`openfused dev serve` / `openfused inloop`). The deployed-serve bundle has no
+> (`fused dev serve` / `fused inloop`). The deployed-serve bundle has no
 > `_core` resolve context, so a public URL is not supported for this widget.
 
 ## Layout (skill-folder convention)
@@ -220,7 +220,7 @@ scripts/
 └── reset/     {main.py, spec.md}
 ```
 
-Source lives in the wheel under `openfused/_core/agents-management/` (read-only).
+Source lives in the wheel under `fused/_core/agents-management/` (read-only).
 The local-backend venv materializes at
 `~/.openfused/core/agents-management/scripts/.venv` on first startup.
 

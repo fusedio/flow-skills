@@ -1,11 +1,11 @@
 ---
 name: openfused-infra
-description: Reference for the infrastructure managed by openfused — what resources exist, why each one is needed, and when they are created, updated, or deleted. Covers the AWS backend (IAM, Lambda, ECR, S3) and the local backend (data directories + venvs, see "Local backend infra"). Use when helping users understand, provision, or troubleshoot the resources that back an openfused environment.
+description: Reference for the infrastructure managed by fused — what resources exist, why each one is needed, and when they are created, updated, or deleted. Covers the AWS backend (IAM, Lambda, ECR, S3) and the local backend (data directories + venvs, see "Local backend infra"). Use when helping users understand, provision, or troubleshoot the resources that back an fused environment.
 ---
 
-# openfused AWS infrastructure
+# fused AWS infrastructure
 
-openfused manages a small, fixed set of AWS resources per environment. All resources are scoped to the environment's `function_prefix` (default `openfused-`). Nothing outside that scope is touched.
+fused manages a small, fixed set of AWS resources per environment. All resources are scoped to the environment's `function_prefix` (default `openfused-`). Nothing outside that scope is touched.
 
 ---
 
@@ -13,9 +13,9 @@ openfused manages a small, fixed set of AWS resources per environment. All resou
 
 ### IAM role
 
-**Name**: `<prefix>` with trailing `-` stripped (e.g. `openfused-` → `openfused`), or overridden with `--role-name` / `role_name` in the env config.
+**Name**: `<prefix>` with trailing `-` stripped (e.g. `openfused-` → `fused`), or overridden with `--role-name` / `role_name` in the env config.
 
-**Why**: Every Lambda function must assume an IAM role to run. openfused creates and owns this role so users don't have to wire one up manually.
+**Why**: Every Lambda function must assume an IAM role to run. fused creates and owns this role so users don't have to wire one up manually.
 
 **What's in the inline policy** (`openfused-default`):
 
@@ -37,7 +37,7 @@ The policy is **re-applied on every `infra apply`**, so it self-heals if manuall
 
 **Naming**: one function per environment, `<prefix>container`. Example: `openfused-container`.
 
-**Why**: Lambda execution is container-based — the env's `docker_image` (an ECR image URI, built with `openfused infra build-image`) *is* the function's code. Packages are baked into the image (`env update -p <pkg>` + `infra build-image`); openfused never pip-installs packages at invocation time.
+**Why**: Lambda execution is container-based — the env's `docker_image` (an ECR image URI, built with `fused infra build-image`) *is* the function's code. Packages are baked into the image (`env update -p <pkg>` + `infra build-image`); fused never pip-installs packages at invocation time.
 
 **Runtime**: the env's `docker_image` ECR URI (`PackageType: Image`).
 
@@ -47,7 +47,7 @@ The policy is **re-applied on every `infra apply`**, so it self-heals if manuall
 - `MemorySize`: value from `lambda_memory_mb` (default 1024 MB)
 - `EphemeralStorage`: value from `lambda_tmp_storage_mb` (when not the 512 MB default)
 - `Architectures`: value from `lambda_architecture` — changing it is a REPLACE (delete + recreate), since architecture cannot be updated on an Image-type function
-- `TenancyConfig`: `{"TenantIsolationMode": "PER_TENANT"}` — every compute function openfused invokes is created with **AWS Lambda tenant isolation mode**, so each invocation runs in an execution environment dedicated to its tenant id (the caller identity, or a shared placeholder).
+- `TenancyConfig`: `{"TenantIsolationMode": "PER_TENANT"}` — every compute function fused invokes is created with **AWS Lambda tenant isolation mode**, so each invocation runs in an execution environment dedicated to its tenant id (the caller identity, or a shared placeholder).
 
 `infra plan` compares the live function's image URI, memory size, ephemeral storage, architecture, and tags against the desired state and reports drift (a leftover zip-packaged function from an old install is reported as REPLACE). `infra apply` reconciles them. Tenant isolation is **not** drift-checked: AWS only allows it to be set at function *creation*.
 
@@ -59,7 +59,7 @@ The policy is **re-applied on every `infra apply`**, so it self-heals if manuall
 
 **Name**: extracted from the `docker_image` URI (registry host stripped, tag stripped) — e.g. `123.dkr.ecr.us-east-1.amazonaws.com/myapp:latest` → `myapp` — or, before a first image exists, `image_build.repo` (default: the prefix minus the trailing dash).
 
-**Why**: the Lambda function's container image must live in ECR in the same account. openfused ensures the repo exists before `docker push`.
+**Why**: the Lambda function's container image must live in ECR in the same account. fused ensures the repo exists before `docker push`.
 
 **When managed**: `infra apply` creates the repository if missing. `infra build-image` also creates it during the build workflow.
 
@@ -91,7 +91,7 @@ Rules are merged idempotently: any customer-defined rule (one whose ID does not 
 
 **Teardown**: all objects are deleted first, then the bucket itself is deleted when `infra teardown` runs.
 
-**What's NOT managed**: user data buckets (the ones you pass to `files list`, `files get`, etc.) are never created or deleted by openfused infra.
+**What's NOT managed**: user data buckets (the ones you pass to `files list`, `files get`, etc.) are never created or deleted by fused infra.
 
 ---
 
@@ -106,7 +106,7 @@ Rules are merged idempotently: any customer-defined rule (one whose ID does not 
 Pass `--no-provision` to skip step 2 (useful when the role already exists or you want to review the plan first).
 
 ### On first `execute_code` call
-If `infra apply` has not already created it, the `<prefix>container` function is created lazily on the first call from the env's `docker_image` and waited on until `Active` (~15–30 s). With no image configured, the call fails with guidance to run `openfused infra build-image` first. Subsequent calls reuse the function.
+If `infra apply` has not already created it, the `<prefix>container` function is created lazily on the first call from the env's `docker_image` and waited on until `Active` (~15–30 s). With no image configured, the call fails with guidance to run `fused infra build-image` first. Subsequent calls reuse the function.
 
 ### `infra plan`
 Dry run. Compares current AWS state against desired state and prints a diff. Exits 0 if nothing to change, 1 if there is drift. Useful in CI.
@@ -133,7 +133,7 @@ By default the build runs remotely in **AWS CodeBuild** — no Docker daemon nee
 | New environment | `env create` does it automatically |
 | Changed `lambda_timeout` in env config | `infra apply` |
 | Changed `docker_image` (e.g. after `build-image`) | `infra apply` |
-| openfused handler code updated (new release) | `infra build-image` (the handler files are baked into the image), then `infra apply` |
+| fused handler code updated (new release) | `infra build-image` (the handler files are baked into the image), then `infra apply` |
 | IAM policy manually modified in AWS console | `infra apply` — self-heals |
 | `docker_image` added to an existing env | `infra apply` — adds ECR pull permission to IAM role |
 
@@ -146,7 +146,7 @@ The AWS credentials used to run `infra apply` / `teardown` must have:
 - `lambda:CreateFunction`, `lambda:GetFunction`, `lambda:ListFunctions`, `lambda:UpdateFunctionCode`, `lambda:UpdateFunctionConfiguration`, `lambda:DeleteFunction`, `lambda:TagResource`
 - `ecr:DescribeRepositories`, `ecr:CreateRepository`, `ecr:DeleteRepository`
 - `s3:HeadBucket`, `s3:CreateBucket`, `s3:DeleteBucket`, `s3:ListBucket`, `s3:DeleteObject`, `s3:GetLifecycleConfiguration`, `s3:PutLifecycleConfiguration` *(if cache_bucket set)*
-- `tag:GetResources` *(Resource Groups Tagging API — discovers deployed resources by their `openfused:*` tags)*
+- `tag:GetResources` *(Resource Groups Tagging API — discovers deployed resources by their `fused:*` tags)*
 - `sts:GetCallerIdentity`
 
 ---
@@ -157,7 +157,7 @@ For a **local environment** (`backend: "local"`), "infra" is the
 data/secrets/venvs directories and the cached venv holding the env's `packages`,
 managed by `LocalPythonInfraManager`. No cloud resources; the only
 prerequisites are a Python interpreter and (optionally) uv. The same `infra_*`
-MCP tools and `openfused infra` CLI commands dispatch to it.
+MCP tools and `fused infra` CLI commands dispatch to it.
 
 | What's managed | Detail |
 |---|---|

@@ -38,7 +38,7 @@ component's defaults (e.g. `"display:grid; gap:16px; padding:20px"`).
 ### `text`
 | prop | type | notes |
 |---|---|---|
-| `value` | string | The text to show. (In openfused, `$param`/`{{ref}}` in `value` render verbatim — use a data-bound node for live data.) |
+| `value` | string | The text to show. (In fused, `$param`/`{{ref}}` in `value` render verbatim — use a data-bound node for live data.) |
 | `variant` | enum | `default`, `muted`, `small`, `large`, `h1`, `h2`, `h3`, `h4`. Picks the element + styling. |
 | `style` | string | CSS string. |
 

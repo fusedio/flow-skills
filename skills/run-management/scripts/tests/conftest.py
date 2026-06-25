@@ -1,6 +1,6 @@
 """Test harness for the run-management UDFs.
 
-The ``@udf`` decorator is injected by the openfused exec runtime, so it is an
+The ``@udf`` decorator is injected by the fused exec runtime, so it is an
 undefined name when a ``main.py`` is imported normally. ``load_udf`` execs the
 module source in a namespace that stubs ``udf`` as an identity decorator, then
 returns the requested function — letting the UDFs be exercised in-process.

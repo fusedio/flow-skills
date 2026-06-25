@@ -5,7 +5,7 @@ ledger — idempotent, write-only-on-change. Mirrors `acknowledgeFeedbackKey`.
 
 Reads/writes `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox
-`openfused` package shadows the real one — there is no SDK call back to the host.
+`fused` package shadows the real one — there is no SDK call back to the host.
 
 ## Why a key, not a stored row
 

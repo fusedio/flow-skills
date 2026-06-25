@@ -1,9 +1,9 @@
 ---
 name: openfused-storage
-description: The openfused storage and secrets MCP tools — inspecting cloud-native datasets and managing secrets. Use when finding/listing/counting S3 objects, reading a Parquet/Arrow/CSV schema, minting a download URL, uploading content, or storing/reading/deleting secrets, via mcp__openfused__{list_files,count_files,get_file,get_file_schema,upload_file,get_secret,put_secret,list_secrets,delete_secret}. For running code over the data see openfused-execute; for the equivalent CLI commands see openfused-cli.
+description: The fused storage and secrets MCP tools — inspecting cloud-native datasets and managing secrets. Use when finding/listing/counting S3 objects, reading a Parquet/Arrow/CSV schema, minting a download URL, uploading content, or storing/reading/deleting secrets, via mcp__openfused__{list_files,count_files,get_file,get_file_schema,upload_file,get_secret,put_secret,list_secrets,delete_secret}. For running code over the data see openfused-execute; for the equivalent CLI commands see openfused-cli.
 ---
 
-# Storage & secrets in openfused
+# Storage & secrets in fused
 
 These tools are the **find → load → explore** front of the workflow: locate data,
 understand its shape, and move bytes in/out — *before* you run code over it with
@@ -87,7 +87,7 @@ put_secret(name="openfused-pg-conn", value="postgresql://user:pass@host/db")
 ```
 
 Then read it *inside* the execution using `openfused.get_secret` — works on both
-AWS and the local backend (via the `openfused` shim):
+AWS and the local backend (via the `fused` shim):
 
 ```python
 import openfused
@@ -113,7 +113,7 @@ gate as `env_delete`/`infra_teardown`). It raises if the secret does not exist
 and returns `{"deleted": name}` on success. On AWS the secret is **scheduled**
 for deletion with the default 30-day recovery window (recoverable via AWS
 tooling until it elapses); on the local backend the name is removed from the
-keychain map immediately. CLI equivalent: `openfused secrets delete
+keychain map immediately. CLI equivalent: `fused secrets delete
 <name>` (prompts; `--yes` to skip). Do not "delete" by overwriting with an
 empty value — that leaves a readable (empty) secret in place.
 
@@ -123,5 +123,5 @@ empty value — that leaves a readable (empty) secret in place.
   on feature flags; they are available in every server session.
 - For destructive cleanup of cached/spilled result objects use `cache_clear`
   (covered in openfused-execute), not these tools.
-- CLI equivalents: `openfused files list|count|get|schema|upload` and
-  `openfused secrets get|put|list|delete` (openfused-cli).
+- CLI equivalents: `fused files list|count|get|schema|upload` and
+  `fused secrets get|put|list|delete` (openfused-cli).

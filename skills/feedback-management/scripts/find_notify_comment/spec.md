@@ -5,7 +5,7 @@ path. Mirrors `findNotifyComment` exactly.
 
 Reads `~/.openfused/app/state.json` (or the directory named by
 `OPENFUSED_APP_DIR_STATE`) directly with stdlib because the in-sandbox
-`openfused` package shadows the real one.
+`fused` package shadows the real one.
 
 ## Why
 

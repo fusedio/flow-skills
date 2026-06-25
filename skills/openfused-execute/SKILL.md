@@ -1,9 +1,9 @@
 ---
 name: openfused-execute
-description: Best practices for running code through openfused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For security scanning, spec checks, and testing see openfused-verify.
+description: Best practices for running code through fused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For security scanning, spec checks, and testing see openfused-verify.
 ---
 
-# Running code via openfused
+# Running code via fused
 
 ## Core principle: code should do one thing
 
@@ -19,7 +19,7 @@ return the value identically, but a UDF is the more capable, portable form:
 
 - It takes parameters, so the same code runs standalone *and* as a fan-out worker
   (`.map()` / `fused.load()`) or a served route — kwargs arrive via `_openfused_args.json`.
-- It matches the real `fused` SDK, so code moves between openfused and Fused unchanged.
+- It matches the real `fused` SDK, so code moves between fused and Fused unchanged.
 - It keeps the return value in an explicit `return`, not a magic module global.
 
 ```python
@@ -136,7 +136,7 @@ conn.execute("SET s3_region='us-east-1'")   # match the bucket's region
 conn.execute("INSTALL httpfs; LOAD httpfs")
 ```
 
-**S3 region**: set `s3_region` to the region of the bucket you are reading from, which may differ from the Lambda's own region. Public buckets (e.g. `fused-asset`) are typically in `us-east-1`; the openfused cache bucket (`openfused-cache`) is in `us-west-2`. If you read from one and write to the other, update `s3_region` between the two operations.
+**S3 region**: set `s3_region` to the region of the bucket you are reading from, which may differ from the Lambda's own region. Public buckets (e.g. `fused-asset`) are typically in `us-east-1`; the fused cache bucket (`openfused-cache`) is in `us-west-2`. If you read from one and write to the other, update `s3_region` between the two operations.
 
 ```python
 # DuckDB reading Parquet directly from S3 (no download needed)
@@ -217,13 +217,13 @@ Choose the H3 resolution based on desired granularity:
 
 ## Requirements
 
-Requirements are configured per-environment via `openfused env update -p <pkg>` and applied automatically to every `execute_code` call — no `requirements` field on the call itself.
+Requirements are configured per-environment via `fused env update -p <pkg>` and applied automatically to every `execute_code` call — no `requirements` field on the call itself.
 
 ```sh
-openfused env update prod -p duckdb -p polars
+fused env update prod -p duckdb -p polars
 ```
 
-**AWS backend:** The `-p/--package` list drives the Docker image build (`image_build.packages`). Packages are pre-baked into the env's container image — nothing is pip-installed at invocation time. After changing packages, run `openfused infra build-image` (builds + pushes the image and records its digest URI as `docker_image`), then `openfused infra apply` to point the env's single `<prefix>container` Lambda function at the new image.
+**AWS backend:** The `-p/--package` list drives the Docker image build (`image_build.packages`). Packages are pre-baked into the env's container image — nothing is pip-installed at invocation time. After changing packages, run `fused infra build-image` (builds + pushes the image and records its digest URI as `docker_image`), then `fused infra apply` to point the env's single `<prefix>container` Lambda function at the new image.
 
 **Local backend:** The `-p/--package` list is **AWS-only** (drives the Docker image build). For the local backend, third-party dependencies belong to a project's `pyproject.toml` (managed with `uv add` inside the project directory). Without a project, execution runs in a bare stdlib-only venv — add the dependency to a project's pyproject.toml and run `uv sync` there.
 
@@ -246,7 +246,7 @@ The `project` parameter is **workspace-registered only** and is **not available 
 ### CLI: `--project NAME` (workspace mode)
 
 ```sh
-openfused code run myanalysis.py --project taxi-pipeline
+fused code run myanalysis.py --project taxi-pipeline
 ```
 
 - Resolves `<workspace>/taxi-pipeline/scripts/.venv/bin/python`.
@@ -256,14 +256,14 @@ openfused code run myanalysis.py --project taxi-pipeline
 
 ```sh
 # Run a skill-folder bundle anywhere on disk — no workspace registration needed
-openfused code run myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
+fused code run myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
 
 # Code test with path-addressed project
-openfused code test mymodule.py --test-file test_mymodule.py \
+fused code test mymodule.py --test-file test_mymodule.py \
     --project-dir ~/.claude/skills/taxi-pipeline
 
 # Dep-scan verify using the project dir's pyproject.toml (no backend execute)
-openfused code verify myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
+fused code verify myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
 ```
 
 - Reads `<dir>/openfused.toml` for the manifest (name defaults to directory basename).
@@ -280,10 +280,10 @@ What both project selectors do:
 
 **Sharp edges:**
 - `project` / `--project` / `--project-dir` are **local-only**. Passing them to an AWS or Fused backend raises a clear error.
-- `test_code` / `code test` **requires** `project` or `--project-dir` on the local backend. Without one of these, the call raises a guided error. pytest and coverage must be declared as dev dependencies in the project's `pyproject.toml`; add them in one step with `openfused project add-dep <project> pytest coverage --dev` (runs `uv add --dev` + `uv sync`). They are not auto-installed in the project venv (unlike the AWS backend where they are pip-installed on first use).
-- **Stale project venv → auto-reconciled.** When the project's `uv.lock` is newer than its `.venv` (e.g. after adding deps out-of-band), the local execute/test path runs `uv sync` once before executing, then proceeds with caching on. If the sync fails it falls back to running on the stale venv, skipping the cache and returning a `warnings` list. Set `OPENFUSED_NO_VENV_SYNC=1` to disable auto-reconcile (CI / locked-down). `openfused doctor` reports staleness without syncing.
+- `test_code` / `code test` **requires** `project` or `--project-dir` on the local backend. Without one of these, the call raises a guided error. pytest and coverage must be declared as dev dependencies in the project's `pyproject.toml`; add them in one step with `fused project add-dep <project> pytest coverage --dev` (runs `uv add --dev` + `uv sync`). They are not auto-installed in the project venv (unlike the AWS backend where they are pip-installed on first use).
+- **Stale project venv → auto-reconciled.** When the project's `uv.lock` is newer than its `.venv` (e.g. after adding deps out-of-band), the local execute/test path runs `uv sync` once before executing, then proceeds with caching on. If the sync fails it falls back to running on the stale venv, skipping the cache and returning a `warnings` list. Set `OPENFUSED_NO_VENV_SYNC=1` to disable auto-reconcile (CI / locked-down). `fused doctor` reports staleness without syncing.
 - Without a project selector, local execution runs in a bare stdlib-only venv. Third-party imports will fail.
-- If the workspace project does not exist (`--project`), the backend raises a `ValueError` pointing at `openfused project new <name>`. If the directory has no `openfused.toml` (`--project-dir`), the CLI raises a clear manifest-not-found error.
+- If the workspace project does not exist (`--project`), the backend raises a `ValueError` pointing at `fused project new <name>`. If the directory has no `openfused.toml` (`--project-dir`), the CLI raises a clear manifest-not-found error.
 
 Only list packages not available in the base image / host interpreter. Common stdlib is always present; `boto3` is always present on AWS Lambda but may not be in a local venv (add it explicitly if needed).
 
@@ -298,7 +298,7 @@ Store the secret first (name must be prefixed with the environment's function
 prefix, e.g. `openfused-`, so the Lambda execution role can read it):
 
 ```sh
-openfused secrets put openfused-my-password "s3cr3t"
+fused secrets put openfused-my-password "s3cr3t"
 ```
 
 Then read it inside the code:
@@ -317,12 +317,12 @@ result = "done"
 ```
 
 `get_secret` raises `KeyError` if the secret does not exist — never returns
-`None`. No `requirements` entry is needed; `openfused` is injected into every
+`None`. No `requirements` entry is needed; `fused` is injected into every
 call directory automatically.
 
 **AWS** — the shim reads Secrets Manager directly via boto3 inside the Lambda
 (execution-role scoped to `openfused-*`). **Local** — the shim dispatches
-through the host invoke broker; the project venv needs neither `openfused` nor
+through the host invoke broker; the project venv needs neither `fused` nor
 `cryptography` installed.
 
 ## Tool call sequence for a typical analysis
@@ -347,9 +347,9 @@ The Fused realtime backend (`compute_mode="realtime"`, the default) has specific
 
 - **No arbitrary `requirements`** — the realtime runtime does not install pip packages at invocation time. Only packages pre-baked into the runtime image are available (plus stdlib and code injected via `Udf.headers`). Passing `requirements` raises a clear error pointing you to the AWS or local backend for arbitrary packages.
 - **No `test_code`** — pytest harness is not available on the Fused runtime. Use the AWS or local backend to run tests.
-- **Fused-native caching only** — result memoization uses Fused's own run cache, not openfused's content-addressed cache. Pass `cache_max_age` (e.g. `"15m"`) to memoize a run on Fused's server; use `cache_refresh=True` to force a fresh execution. The `cache_clear` tool and `cache_object_key` parameter are not supported (raise a clear error); `cache_refresh` is the per-call escape hatch for stale results.
+- **Fused-native caching only** — result memoization uses Fused's own run cache, not fused's content-addressed cache. Pass `cache_max_age` (e.g. `"15m"`) to memoize a run on Fused's server; use `cache_refresh=True` to force a fresh execution. The `cache_clear` tool and `cache_object_key` parameter are not supported (raise a clear error); `cache_refresh` is the per-call escape hatch for stale results.
 - **`input_files` staging** — files are uploaded via the files API to `fd://tmp` (the `staging_path` default) and passed as a mapping of original filename → staged `fd://` path to the UDF. For a **decorated UDF** (`@fused.udf def fn(...)`), the function must declare an `input_files` parameter. For a **synthesized UDF** (plain `result =` Python), `input_files` is an in-scope variable. Filenames with path separators, `..`, or leading slashes are rejected as unsafe.
-- **Large and cached results work** — Fused delivers the result body via a presigned redirect (`x-fused-redirect`, used for both cached and large responses). With `large_result_delivery="presign"`, openfused returns the redirect URL without downloading. With `large_result_delivery="inline"` (default), openfused probes the size; results ≥ 5 MiB fall back to the redirect URL. Otherwise the data is downloaded and deserialized inline. UDF errors with a redirect present return `None` (error propagates). The data is returned as-is (no re-caching — Fused owns its run cache).
+- **Large and cached results work** — Fused delivers the result body via a presigned redirect (`x-fused-redirect`, used for both cached and large responses). With `large_result_delivery="presign"`, fused returns the redirect URL without downloading. With `large_result_delivery="inline"` (default), fused probes the size; results ≥ 5 MiB fall back to the redirect URL. Otherwise the data is downloaded and deserialized inline. UDF errors with a redirect present return `None` (error propagates). The data is returned as-is (no re-caching — Fused owns its run cache).
 - **Batch mode (`compute_mode="batch`) not yet implemented** — selecting batch compute raises `NotImplementedError` with guidance.
 
 ## Monitoring
@@ -522,7 +522,7 @@ Each `execute_code` call runs in a fresh subprocess under a unique working dir, 
 
 ## Resetting the compute backend
 
-Call `mcp__openfused__infra_lambda_reset` (or `openfused infra lambda-reset` from the CLI) to reset the resolved compute backend. Use this when:
+Call `mcp__openfused__infra_lambda_reset` (or `fused infra lambda-reset` from the CLI) to reset the resolved compute backend. Use this when:
 
 - The backend is stuck in a broken state
 - You need to force a fresh environment (e.g. after updating packages or handler logic)
@@ -532,7 +532,7 @@ Call `mcp__openfused__infra_lambda_reset` (or `openfused infra lambda-reset` fro
 
 **Local backend:** Clears the in-process venv ready-cache. No venvs are deleted from disk; the next `execute_code` call re-checks the on-disk markers (and rebuilds anything missing).
 
-The MCP tool deletes every prefix-matched Lambda before recreating one, so it is registered only when the server is started with `--enable-infra` (and can be suppressed even then with `--disable-reset`). The `openfused infra lambda-reset` CLI command is unaffected.
+The MCP tool deletes every prefix-matched Lambda before recreating one, so it is registered only when the server is started with `--enable-infra` (and can be suppressed even then with `--disable-reset`). The `fused infra lambda-reset` CLI command is unaffected.
 
 ## Large results and result caching
 

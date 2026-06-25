@@ -13,10 +13,10 @@ you just need one decision and then to move on.
 
 | Command | What it does | stdout |
 |---|---|---|
-| `openfused widget push <file.json>` | Render this config on the parley page now (replaces the current view in place). | one line `{"rev":N,"viewers":M}` |
-| `openfused widget watch` | Stream the human's events as NDJSON until stopped. | one JSON object per event |
+| `fused widget push <file.json>` | Render this config on the parley page now (replaces the current view in place). | one line `{"rev":N,"viewers":M}` |
+| `fused widget watch` | Stream the human's events as NDJSON until stopped. | one JSON object per event |
 
-(`openfused widget parley` just opens/prints the parley page URL; `openfused
+(`fused widget parley` just opens/prints the parley page URL; `fused
 widget agent` runs a built-in auto-responder — not needed for manual planning.)
 
 ## The workflow in Claude Code — watch + Monitor (active response)
@@ -38,7 +38,7 @@ you respond the moment an event arrives — no polling.
    Monitor(
      description: "parley human events",
      persistent: true,
-     command: "openfused widget watch --port 4477 --from latest"
+     command: "fused widget watch --port 4477 --from latest"
    )
    ```
    `watch`'s default verbosity already emits **only the signals you act on** —
@@ -49,7 +49,7 @@ you respond the moment an event arrives — no polling.
 
 2. **Push your first view** (foreground; returns `{"rev":N,"viewers":M}`):
    ```bash
-   openfused widget push /abs/path/plan-v1.json --port 4477
+   fused widget push /abs/path/plan-v1.json --port 4477
    ```
    The push opens the parley tab when nobody is viewing it yet (`viewers == 0`). The
    Monitor's `watch` stream is the **agent's** channel (`/api/parley/events`), not a

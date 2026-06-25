@@ -2,7 +2,7 @@
 
 A self-contained [Claude Code](https://claude.com/claude-code) plugin for working with **OpenFused** — end-to-end data work on cloud-native datasets via MCP and CLI. It bundles the OpenFused `_core` management skills together with usage skills that take you from a fresh install to a running project and its widget UI, with no other repo required.
 
-These skills are written to **drive the `openfused` CLI** from an agent (Claude Code). They are not consumed by the OpenFused app/UI.
+These skills are written to **drive the `fused` CLI** from an agent (Claude Code). They are not consumed by the OpenFused app/UI.
 
 ## Install
 
@@ -29,17 +29,17 @@ The manifest at [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) point
 | [`openfused-guide`](skills/openfused-guide/) | Entry-point router — maps a goal (set up / run code / build a widget) to the right skill. |
 | [`openfused-setup`](skills/openfused-setup/) | Install and set up OpenFused for the first time — AWS credential checks, install, provision, verify. |
 | [`openfused-infra`](skills/openfused-infra/) | Reference for the infrastructure OpenFused manages (AWS: IAM, Lambda, ECR, S3; local: data dirs + venvs) — what exists, why, and when it changes. |
-| [`openfused-cli`](skills/openfused-cli/) | The `openfused` CLI reference — environments, file storage, secrets, code execution, infra commands. |
+| [`openfused-cli`](skills/openfused-cli/) | The `fused` CLI reference — environments, file storage, secrets, code execution, infra commands. |
 | [`openfused-projects`](skills/openfused-projects/) | The canonical end-to-end guide — pick an env, create a project, decompose into UDFs, author specs + code, validate, run/preview, deploy. |
 | [`openfused-execute`](skills/openfused-execute/) | Best practices for running code through `execute_code` — structuring code, choosing a data library, handling results, writing outputs. |
 | [`openfused-verify`](skills/openfused-verify/) | Security scanning, testing, and correctness validation (`verify_code`, `test_code`, audit log, spec checks). |
 | [`openfused-storage`](skills/openfused-storage/) | Storage + secrets MCP tools — inspect cloud-native datasets and manage secrets. |
 | [`openfused-widgets`](skills/openfused-widgets/) | Author and preview JSON-UI widgets as a project's response — the compute→visualize pattern and the surfaces that render them. |
-| [`openfused-feedback`](skills/openfused-feedback/) | Show the human a real browser UI for questions, approvals, and plan reviews via `openfused widget open` / parley. |
+| [`openfused-feedback`](skills/openfused-feedback/) | Show the human a real browser UI for questions, approvals, and plan reviews via `fused widget open` / parley. |
 
 ### Management (`_core`)
 
-These drive the OpenFused `_core` workspace UDFs — the App state store (tasks, runs, feedback, secrets, agents) — over the local execution layer started with `openfused dev serve`.
+These drive the OpenFused `_core` workspace UDFs — the App state store (tasks, runs, feedback, secrets, agents) — over the local execution layer started with `fused dev serve`.
 
 | Skill | Purpose |
 |---|---|

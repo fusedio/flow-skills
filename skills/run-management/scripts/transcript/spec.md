@@ -42,4 +42,4 @@ POST /api/exec/udf?workspace=_core&project=run-management
 ## Notes
 
 - Read-only, stdlib-only; reads the file directly (the exec sandbox shadows the
-  real `openfused` package with a shim).
+  real `fused` package with a shim).

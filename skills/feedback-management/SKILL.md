@@ -9,7 +9,7 @@ disable-model-invocation: true
 The App's **interaction-card** store exposed as live UDFs — the **durable system
 of record for interaction cards**. Reads AND writes `~/.openfused/app/state.json`.
 These UDFs own that local store; an agent drives them over the local execution
-layer started with `openfused dev serve`.
+layer started with `fused dev serve`.
 
 ## What this project is
 
@@ -62,11 +62,11 @@ below.
 
 ## Access pattern
 
-Start the local execution layer. `openfused dev serve` binds a loopback server,
+Start the local execution layer. `fused dev serve` binds a loopback server,
 prints ONE JSON handshake line, then runs in the foreground:
 
 ```
-openfused dev serve
+fused dev serve
 {"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
 # Export the origin + token from that handshake line:
@@ -283,7 +283,7 @@ scripts/
     └── spec.md
 ```
 
-Source lives in the wheel under `openfused/_core/feedback-management/`
+Source lives in the wheel under `fused/_core/feedback-management/`
 (read-only). The local-backend venv materializes at
 `~/.openfused/core/feedback-management/scripts/.venv` on first startup. Adding a
 new op = add `scripts/<name>/{main.py,spec.md}` (auto-discovered from the

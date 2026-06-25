@@ -45,3 +45,102 @@ def test_transcript_path_honors_app_dir(load_udf, tmp_path, monkeypatch):
     assert events == [{"type": "msg", "text": "hi"}]
     # a different store sees no transcript
     assert load_udf("transcript", "transcript")(run_id="run_x", app_dir=str(tmp_path / "other")) == []
+
+
+# --- delete_project --------------------------------------------------------
+
+
+def _seed_runs(load_udf, app_dir, runs, transcripts):
+    load_udf("bulk_seed", "bulk_seed")(
+        runs=json.dumps(runs), transcripts=json.dumps(transcripts), app_dir=str(app_dir)
+    )
+
+
+def test_delete_project_removes_only_named_project(load_udf, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[
+            {"id": "run_a1", "taskId": "t1", "project": "alpha", "status": "completed"},
+            {"id": "run_a2", "taskId": "t2", "project": "alpha", "status": "failed"},
+            {"id": "run_b1", "taskId": "t3", "project": "beta", "status": "completed"},
+        ],
+        transcripts={
+            "run_a1": [{"type": "msg", "text": "a1"}],
+            "run_a2": [{"type": "msg", "text": "a2"}],
+            "run_b1": [{"type": "msg", "text": "b1"}],
+        },
+    )
+
+    ack = load_udf("delete_project", "delete_project")(project="alpha", app_dir=str(tmp_path))
+    assert ack == {"runsRemoved": 2, "transcriptsRemoved": 2}
+
+    # beta's run + transcript survive; alpha's records and files are gone
+    remaining_ids = {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))}
+    assert remaining_ids == {"run_b1"}
+    assert (tmp_path / "runs" / "run_b1.ndjson").exists()
+    assert not (tmp_path / "runs" / "run_a1.ndjson").exists()
+    assert not (tmp_path / "runs" / "run_a2.ndjson").exists()
+
+
+def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    delete_project = load_udf("delete_project", "delete_project")
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[
+            {"id": "run_a1", "taskId": "t1", "project": "alpha", "status": "completed"},
+            {"id": "run_b1", "taskId": "t2", "project": "beta", "status": "completed"},
+        ],
+        transcripts={"run_a1": [{"type": "msg", "text": "a1"}]},
+    )
+
+    first = delete_project(project="alpha", app_dir=str(tmp_path))
+    assert first == {"runsRemoved": 1, "transcriptsRemoved": 1}
+
+    # re-run on the now-empty project: zero counts, no transcript to remove
+    second = delete_project(project="alpha", app_dir=str(tmp_path))
+    assert second == {"runsRemoved": 0, "transcriptsRemoved": 0}
+
+    # empty/whitespace project is a no-op
+    assert delete_project(project="", app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
+    assert delete_project(project="   ", app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
+
+    # beta untouched
+    assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_b1"}
+
+
+def test_delete_project_skips_traversal_shaped_id(load_udf, tmp_path, monkeypatch):
+    """A run whose id resolves outside runs/ must not let delete_project remove a
+    foreign file: the run record is still dropped, but the file is left alone and
+    counted as skipped (transcriptsRemoved < runsRemoved)."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+
+    # A sentinel that a traversal id like "../state/secret" would resolve onto.
+    state_dir = tmp_path / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    sentinel = state_dir / "secret.ndjson"
+    sentinel.write_text("keep me\n", encoding="utf-8")
+
+    # Seed two alpha runs: one with a normal id (real transcript), one with a
+    # traversal-shaped id (bulk_seed itself path-confines, so no file is written).
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[
+            {"id": "run_ok", "taskId": "t1", "project": "alpha", "status": "completed"},
+            {"id": "../state/secret", "taskId": "t2", "project": "alpha", "status": "completed"},
+        ],
+        transcripts={"run_ok": [{"type": "msg", "text": "ok"}]},
+    )
+    assert (tmp_path / "runs" / "run_ok.ndjson").exists()
+
+    ack = load_udf("delete_project", "delete_project")(project="alpha", app_dir=str(tmp_path))
+    # both run records dropped; only the legitimate transcript removed
+    assert ack == {"runsRemoved": 2, "transcriptsRemoved": 1}
+    assert not (tmp_path / "runs" / "run_ok.ndjson").exists()
+    # the traversal target outside runs/ is untouched
+    assert sentinel.read_text(encoding="utf-8") == "keep me\n"
+    assert load_udf("read", "read")(app_dir=str(tmp_path)) == []

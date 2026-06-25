@@ -12,10 +12,11 @@ layer started with `fused dev serve`.
 
 ## What this project is
 
-Nine UDFs over the App state file: six that read/mutate task records (`read`,
+Ten UDFs over the App state file: six that read/mutate task records (`read`,
 `create`, `assign`, `update_status`, `set_blocked_by`, `delete`), two that
-manage comments (`list_comments`, `add_comment`), and one that seeds whole
-collections verbatim (`bulk_seed`). Every UDF touches `state.json` directly with
+manage comments (`list_comments`, `add_comment`), one that seeds whole
+collections verbatim (`bulk_seed`), and one that purges a whole project's tasks +
+comments (`delete_project`). Every UDF touches `state.json` directly with
 stdlib; no third-party imports in UDF logic.
 
 The split is: **read via SQL** (any query over `{{read}}`, via the `/api/exec/sql`
@@ -215,6 +216,31 @@ under its own flock), and returns the per-collection counts:
 This is the only supported way to seed app-state from host Python — seeding goes
 through this UDF, never a direct file write.
 
+### delete_project
+
+```
+delete_project(project: str = "") -> dict
+```
+
+Purges a whole project from the task store: removes every task whose `project`
+matches, and every comment on those tasks (comments carry no `project`, so they
+join via `taskId`). The task-management half of the cross-skill project-delete
+cascade — it touches ONLY `tasks` + `comments` and leaves `runs`/`cards`/
+`costEvents` to their owners (`run-management` / `feedback-management` / Flow).
+Idempotent: an empty/whitespace `project`, or one with no tasks, returns zero
+counts and writes nothing. Returns an ack:
+
+```json
+{
+  "deletedTaskIds": ["task_abc", "task_def"],
+  "tasksRemoved": 2,
+  "commentsRemoved": 3
+}
+```
+
+`deletedTaskIds` is the sorted list of removed task ids — Flow uses it to drive
+per-task cleanup (`mcp/<taskId>.json`, sessions) outside this UDF.
+
 ## Rendering as a `task-board` widget (standalone)
 
 These UDFs are enough to drive the `task-board` widget on their own — no app
@@ -297,7 +323,8 @@ scripts/
 ├── delete/ …
 ├── list_comments/ …
 ├── add_comment/ …
-└── bulk_seed/ …
+├── bulk_seed/ …
+└── delete_project/ …
 ```
 
 Source lives in the wheel under `fused/_core/task-management/` (read-only).

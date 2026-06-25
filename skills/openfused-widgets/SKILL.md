@@ -231,6 +231,17 @@ for geo data, not an optional extra.
 
 The `{{ref}}` / `$param` grammar above is the full contract.
 
+> **Archived widgets (soft-deleted, reachable by link).** When a human archives a
+> widget in the app it moves to `archive/widgets/<stem>.json` and is **read-only** —
+> gone from the canvas, the Widget tab, and `get_project_context`, but still loadable
+> through a **task deep-link**. A bare `{{udf}}` resolves from the live `scripts/`
+> dir; if that UDF was *also* archived, the resolver falls back to
+> `archive/scripts/<udf>/` so a fully-archived **widget + UDF** pair still resolves its
+> data when opened via the link. The fallback fires only for the **exact ref** the
+> widget names — archived UDFs are never enumerated, so they stay out of every catalog.
+> You don't author or restore archived widgets from here (that's an app + human
+> action); just know an archived widget you reach by link still renders.
+
 ### Core UDFs → custom views (no project setup)
 
 The built-in `_core` workspace ships ready-to-use UDFs that **any ad-hoc widget can

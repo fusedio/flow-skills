@@ -219,9 +219,18 @@ def delete_project(project: str = "", task_ids: str = "", app_dir: str = "") -> 
     A run is removed if its ``taskId`` is in *task_ids* (the project's deleted task
     ids — the real path, since live runs carry no ``project``) OR *project* is
     non-empty and ``run["project"] == project`` (the ``bulk_seed``-restored
-    fallback). One atomic ``_load_doc → mutate → _save_doc`` cycle over ``runs``,
-    then a best-effort delete of each removed run's ``runs/<runId>.ndjson``
-    (path-confined via ``_transcript_path`` — a traversal-shaped id is skipped).
+    fallback). One ``_load_doc → mutate → _save_doc`` cycle over ``runs``, holding
+    the ``runs`` flock the whole time.
+
+    **Resumability — order is load-bearing.** Under the lock, transcript
+    ``.ndjson`` files are deleted FIRST (path-confined via ``_transcript_path`` — a
+    traversal-shaped id is skipped), and ONLY THEN is the pruned ``runs.json``
+    written LAST. The run RECORD is the recovery anchor: a crash after some
+    transcripts are gone but before the prune leaves every record intact, so a
+    rerun (same ``task_ids``) re-finds them and idempotently cleans the remaining
+    transcripts (an already-gone file is skipped). Pruning first would orphan any
+    transcript not yet deleted — no record left to re-find it by.
+
     Idempotent: both *project* and *task_ids* empty — or no runs match — returns
     zero counts and writes nothing; a missing transcript file counts as skipped.
 
@@ -247,16 +256,14 @@ def delete_project(project: str = "", task_ids: str = "", app_dir: str = "") -> 
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 
-    # Collect matching run ids, then drop those records.
+    # Collect matching run ids and the pruned list, but do NOT save yet.
     removed_ids = [r.get("id") for r in runs if _matches(r)]
     remaining_runs = [r for r in runs if not _matches(r)]
     runs_removed = len(runs) - len(remaining_runs)
 
-    doc["runs"] = remaining_runs
-    _save_doc(doc)
-
-    # Delete each removed run's transcript. A missing file, or an id that resolves
-    # outside runs/, counts as skipped (not removed).
+    # Delete transcripts FIRST (still under the runs flock, before the prune). A
+    # missing file, or an id that resolves outside runs/, counts as skipped. If we
+    # crash here, every run record is still present, so a rerun re-finds it.
     transcripts_removed = 0
     for run_id in removed_ids:
         if not run_id:
@@ -270,5 +277,9 @@ def delete_project(project: str = "", task_ids: str = "", app_dir: str = "") -> 
         except OSError:
             # A racing deleter (or a vanished file) leaves nothing to remove.
             pass
+
+    # Prune the run records LAST, releasing the lock in _save_doc.
+    doc["runs"] = remaining_runs
+    _save_doc(doc)
 
     return {"runsRemoved": runs_removed, "transcriptsRemoved": transcripts_removed}

@@ -271,9 +271,16 @@ deleted task ids, passed by Flow from `task-management.delete_project`'s
 `deletedTaskIds` (**the real path**) — OR `project` is non-empty and
 `run["project"]` matches (the `bulk_seed`-restored fallback). Transcript deletion
 REUSES the `runs/`-confined `_transcript_path` helper, so a traversal-shaped run
-id can never remove a file outside `runs/` (it counts as skipped). Idempotent:
-both `project` and `task_ids` empty, or no runs match, returns zero counts and
-writes nothing; a missing transcript file counts as skipped. Returns an ack:
+id can never remove a file outside `runs/` (it counts as skipped).
+
+**Resumable ordering.** Under the `runs` flock, transcript `.ndjson` files are
+deleted FIRST and the pruned `runs.json` is written LAST. The run record is the
+recovery anchor: a crash after some transcripts are gone but before the prune
+leaves every record intact, so a rerun (same `task_ids`) re-finds them and cleans
+the remaining transcripts. Pruning first would orphan any not-yet-deleted
+transcript. Idempotent: both `project` and `task_ids` empty, or no runs match,
+returns zero counts and writes nothing; a missing transcript file counts as
+skipped. Returns an ack:
 
 ```json
 { "runsRemoved": 3, "transcriptsRemoved": 2 }

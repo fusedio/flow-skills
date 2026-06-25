@@ -223,8 +223,11 @@ delete_project(project: str = "") -> dict
 ```
 
 Purges a whole project from the task store: removes every task whose `project`
-matches, and every comment on those tasks (comments carry no `project`, so they
-join via `taskId`). The task-management half of the cross-skill project-delete
+matches (by `project` directly — an id-less matching task is removed too), and
+every comment on those tasks (comments carry no `project`, so they join via
+`taskId`). Scrubs the removed ids from every surviving task's `blockedBy` (mirrors
+the single-task `delete`), so a cross-project task blocked on a deleted task does
+not stay stuck. The task-management half of the cross-skill project-delete
 cascade — it touches ONLY `tasks` + `comments` and leaves `runs`/`cards`/
 `costEvents` to their owners (`run-management` / `feedback-management` / Flow).
 Idempotent: an empty/whitespace `project`, or one with no tasks, returns zero

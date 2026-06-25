@@ -143,6 +143,59 @@ def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypat
     assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_b1"}
 
 
+def test_delete_project_deletes_transcripts_before_pruning_records(load_udf, tmp_path, monkeypatch):
+    """Resumability: transcript files must be deleted BEFORE runs.json is pruned,
+    so a crash mid-op leaves the records as the recovery anchor. We assert order by
+    wrapping the module's `_save_doc` (the prune step) to record, at the moment it
+    runs, whether the matched transcript files are already gone — and confirm a
+    rerun on the half-/fully-deleted state is a clean no-op."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    delete_project = load_udf("delete_project", "delete_project")
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[
+            {"id": "run_a1", "taskId": "t1", "status": "completed"},
+            {"id": "run_a2", "taskId": "t1", "status": "failed"},
+        ],
+        transcripts={
+            "run_a1": [{"type": "msg", "text": "a1"}],
+            "run_a2": [{"type": "msg", "text": "a2"}],
+        },
+    )
+    t1 = tmp_path / "runs" / "run_a1.ndjson"
+    t2 = tmp_path / "runs" / "run_a2.ndjson"
+    assert t1.exists() and t2.exists()
+
+    # Wrap _save_doc (the prune) in the function's own module namespace, capturing
+    # whether the transcripts still exist at the instant the prune is about to run.
+    ns = delete_project.__globals__
+    real_save = ns["_save_doc"]
+    transcripts_present_at_prune = {}
+
+    def _spy_save(doc):
+        transcripts_present_at_prune["t1"] = t1.exists()
+        transcripts_present_at_prune["t2"] = t2.exists()
+        return real_save(doc)
+
+    monkeypatch.setitem(ns, "_save_doc", _spy_save)
+
+    ack = delete_project(task_ids=json.dumps(["t1"]), app_dir=str(tmp_path))
+    assert ack == {"runsRemoved": 2, "transcriptsRemoved": 2}
+
+    # Order proof: both transcripts were ALREADY deleted when the prune ran.
+    assert transcripts_present_at_prune == {"t1": False, "t2": False}
+    # And the records were pruned (the prune did happen, last).
+    assert not t1.exists() and not t2.exists()
+    assert load_udf("read", "read")(app_dir=str(tmp_path)) == []
+
+    # A rerun on the fully-deleted state is a clean no-op (idempotent).
+    assert delete_project(task_ids=json.dumps(["t1"]), app_dir=str(tmp_path)) == {
+        "runsRemoved": 0,
+        "transcriptsRemoved": 0,
+    }
+
+
 def test_delete_project_skips_traversal_shaped_id(load_udf, tmp_path, monkeypatch):
     """A run whose id resolves outside runs/ must not let delete_project remove a
     foreign file: the run record is still dropped, but the file is left alone and

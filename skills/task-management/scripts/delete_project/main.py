@@ -178,15 +178,26 @@ def delete_project(project: str = "", app_dir: str = "") -> dict:
     doc = _load_doc("comments", "tasks")
     tasks: list[dict] = doc.get("tasks") or []
 
-    # Collect this project's task ids; comments join via taskId.
-    deleted: set[str] = {t["id"] for t in tasks if t.get("project") == project and t.get("id")}
-
-    remaining_tasks = [t for t in tasks if t.get("id") not in deleted]
+    # Remove tasks by `project` DIRECTLY (not by an id-set membership test), so a
+    # matching-project task with a missing/falsy id is removed too. `deleted` is the
+    # set of removed task ids that HAVE an id — the join key for comment removal +
+    # blockedBy scrub, and the returned `deletedTaskIds` (an id-less task carries no
+    # taskId to join on and no id to report).
+    remaining_tasks = [t for t in tasks if t.get("project") != project]
     tasks_removed = len(tasks) - len(remaining_tasks)
+    deleted: set[str] = {t["id"] for t in tasks if t.get("project") == project and t.get("id")}
 
     comments: list[dict] = doc.get("comments") or []
     remaining_comments = [c for c in comments if c.get("taskId") not in deleted]
     comments_removed = len(comments) - len(remaining_comments)
+
+    # Scrub deleted ids from every SURVIVING task's blockedBy (mirrors the
+    # single-task `delete` UDF) — a cross-project task blocked on a deleted task
+    # must not stay stuck on a dangling id.
+    for t in remaining_tasks:
+        blocked_by: list[str] = t.get("blockedBy") or []
+        if any(bid in deleted for bid in blocked_by):
+            t["blockedBy"] = [bid for bid in blocked_by if bid not in deleted]
 
     doc["tasks"] = remaining_tasks
     doc["comments"] = remaining_comments

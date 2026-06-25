@@ -19,15 +19,20 @@ One atomic `_load_doc → mutate → _save_doc` cycle over `tasks` + `comments`.
    `{"deletedTaskIds": [], "tasksRemoved": 0, "commentsRemoved": 0}` immediately
    — no lock, no write, never an error.
 
-2. **Collect task ids.** Gather the `id` of every task whose camelCase `project`
-   field equals `project`. This set is the join key for comment removal.
+2. **Remove tasks by `project` directly.** Drop every task whose camelCase
+   `project` field equals `project`, **regardless of its `id`** — a
+   matching-project task with a missing/falsy `id` is still removed. Separately
+   collect `deleted` = the ids of removed tasks that HAVE an id (the join key for
+   the next two steps, and the returned `deletedTaskIds`).
 
-3. **Remove tasks.** Drop every task whose `id` is in the collected set from
-   `doc["tasks"]`.
+3. **Remove comments.** Drop every comment whose `taskId` is in `deleted` from
+   `doc["comments"]`. Comments carry no `project` field of their own, so they join
+   to the project via their task (an id-less removed task has no `taskId` to join
+   on, so it has no comments to remove).
 
-4. **Remove comments.** Drop every comment whose `taskId` is in the collected set
-   from `doc["comments"]`. Comments carry no `project` field of their own, so they
-   join to the project via their task.
+4. **Scrub `blockedBy`.** For every SURVIVING task, strip any id in `deleted` from
+   its `blockedBy` list (mirrors the single-task `delete` UDF). A cross-project
+   task blocked on a deleted task must not stay stuck on a dangling id.
 
 5. **Save.** Persist via atomic tmp+rename. Only `tasks` + `comments` are locked
    and rewritten; every other top-level collection (`runs`, `cards`, `costEvents`,
@@ -44,8 +49,9 @@ One atomic `_load_doc → mutate → _save_doc` cycle over `tasks` + `comments`.
 }
 ```
 
-`deletedTaskIds` is the sorted list of removed task ids. Flow uses it to drive
-per-task cleanup (`mcp/<taskId>.json`, sessions) outside this UDF.
+`deletedTaskIds` is the sorted list of removed task ids that HAVE an id (id-less
+removed tasks still count toward `tasksRemoved` but contribute no id). Flow uses
+it to drive per-task cleanup (`mcp/<taskId>.json`, sessions) outside this UDF.
 
 ## Notes
 

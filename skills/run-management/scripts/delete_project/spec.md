@@ -50,17 +50,29 @@ error.
 
 1. **No-op guard.** Both `project` (after strip) and `task_ids` (parsed) empty →
    return zero counts, no lock, no write, never an error.
-2. `_load_doc("runs")` (exclusive flock on the `runs` collection across
-   load→save); raises on a corrupt-but-present `runs.json`.
-3. Collect the `id` of every run matched by the rule above; drop those records
-   from `doc["runs"]`. Every other collection is left untouched.
-4. `_save_doc(doc)` — writes only the changed `runs` collection (dirty-snapshot
-   logic) via atomic `tmp` + `os.replace`, then releases the lock.
-5. **Transcripts**: for each removed run id, resolve `runs/<runId>.ndjson` with
-   the `runs/`-confined `_transcript_path` (a traversal-shaped id → skip); if the
-   file exists, `os.remove` it and count it; a missing file or a racing deleter
-   leaves nothing to remove (skip, never raise).
+2. `_load_doc("runs")` (exclusive flock on the `runs` collection across the whole
+   op); raises on a corrupt-but-present `runs.json`.
+3. Collect the `id` of every run matched by the rule above, and compute the pruned
+   `runs` list — but do **not** write yet.
+4. **Transcripts FIRST.** For each removed run id, resolve `runs/<runId>.ndjson`
+   with the `runs/`-confined `_transcript_path` (a traversal-shaped id → skip); if
+   the file exists, `os.remove` it and count it; a missing file or a racing
+   deleter leaves nothing to remove (skip, never raise).
+5. **Prune records LAST.** `_save_doc(doc)` writes only the changed `runs`
+   collection (dirty-snapshot logic) via atomic `tmp` + `os.replace`, then
+   releases the lock. Every other collection is left untouched.
 6. Return the runs-removed + transcripts-removed counts.
+
+## Resumability — why transcripts are deleted before the prune
+
+The order in steps 4→5 is load-bearing. The run **record** is the recovery
+anchor: each transcript is only re-findable through the record whose id names it.
+If the prune ran first, a crash mid-op would orphan every transcript not yet
+deleted — its record is gone, so nothing re-finds the file. By deleting
+transcripts first and pruning last, a crash leaves all records intact, so a rerun
+(same `task_ids`) re-finds them and cleans the remaining transcripts (an
+already-gone file is an idempotent skip). Both steps run under the same `runs`
+flock held from step 2.
 
 ## Idempotency
 

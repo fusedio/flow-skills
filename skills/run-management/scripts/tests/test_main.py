@@ -111,6 +111,37 @@ def test_delete_project_matches_bulk_seed_project_fallback(load_udf, tmp_path, m
     assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_b1"}
 
 
+def test_delete_project_matches_raw_project_not_stripped(load_udf, tmp_path, monkeypatch):
+    """Regression: matching must use the RAW `project` arg (like task/feedback), not
+    a stripped value. A run tagged with the trimmed slug "alpha" must NOT be removed
+    when delete_project is called with a whitespace variant " alpha " — otherwise a
+    whitespace-variant call would delete another (trimmed) project's runs while its
+    tasks/cards (matched raw) survive: inconsistent, data-corrupting matching."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[{"id": "run_a1", "taskId": "t1", "project": "alpha", "status": "completed"}],
+        transcripts={"run_a1": [{"type": "msg", "text": "a1"}]},
+    )
+
+    delete_project = load_udf("delete_project", "delete_project")
+
+    # Whitespace-variant slug must NOT match the trimmed-tag run (raw comparison).
+    for variant in (" alpha", "alpha ", "  alpha  "):
+        ack = delete_project(project=variant, app_dir=str(tmp_path))
+        assert ack == {"runsRemoved": 0, "transcriptsRemoved": 0}, variant
+        assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_a1"}
+        assert (tmp_path / "runs" / "run_a1.ndjson").exists()
+
+    # Sanity: the EXACT raw slug does match and removes it.
+    assert delete_project(project="alpha", app_dir=str(tmp_path)) == {
+        "runsRemoved": 1,
+        "transcriptsRemoved": 1,
+    }
+    assert load_udf("read", "read")(app_dir=str(tmp_path)) == []
+
+
 def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypatch):
     monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
     delete_project = load_udf("delete_project", "delete_project")

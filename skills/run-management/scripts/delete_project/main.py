@@ -242,15 +242,19 @@ def delete_project(project: str = "", task_ids: str = "", app_dir: str = "") -> 
     if app_dir:
         os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
 
-    project = project.strip()
     task_id_set = _parse_task_ids(task_ids)
 
     # No-op when there is nothing to match on: never lock or write, never raise.
-    if not project and not task_id_set:
+    # `.strip()` is used ONLY here, for the empty/whitespace guard — the value
+    # matched against stored records below stays the RAW `project`, identical to
+    # task-management/feedback-management's comparison (a whitespace-variant slug
+    # must NOT match the trimmed name and remove another project's runs).
+    if not project.strip() and not task_id_set:
         return {"runsRemoved": 0, "transcriptsRemoved": 0}
 
     def _matches(run: dict) -> bool:
         # Match on taskId (the real live path) OR a bulk_seed-restored project field.
+        # `project` is the RAW arg (not stripped) — consistent with the sibling ops.
         return run.get("taskId") in task_id_set or (bool(project) and run.get("project") == project)
 
     doc = _load_doc("runs")

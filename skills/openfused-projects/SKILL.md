@@ -259,6 +259,20 @@ not need to register it. The manifest's `[scripts.*]`/`kind` table is synced by 
 **MCP `project_show` tool** and at deploy time; the CLI `project show` returns the
 read-only context packet and lists UDFs but does not rewrite the manifest.
 
+> **`archive/` — soft-deleted artifacts, never enumerated.** A project may carry a
+> top-level **`archive/`** directory that mirrors the layout
+> (`archive/scripts/<udf>/`, `archive/widgets/<stem>.json`,
+> `archive/references/<name>.md`, `archive/canvas.toml`). It holds artifacts a human
+> **archived** in the app — a reversible soft-delete. Because discovery is a shallow,
+> by-name scan of the *live* dirs, archived artifacts are **invisible** to everything
+> you drive: they never appear in `get_project_context` / `project show`, the pipeline
+> canvas, or deploy, and a deploy of an archived UDF is simply "not found". `archive/`
+> is **git-tracked** (provenance travels with the repo) but it is **not yours to
+> author into**: archive/restore is an app + human operation, not a CLI step, so never
+> write into `archive/`, treat it as a UDF source, or "restore" by hand-moving files.
+> The one place archived source is still read is the widget resolve fallback (see
+> **openfused-widgets** › archived widgets).
+
 ---
 
 ## Step 7 — Run / preview locally

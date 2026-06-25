@@ -1,6 +1,6 @@
 # delete_project
 
-Remove every run record for one project from the live app state, and delete each
+Remove the named project's run records from the live app state, and delete each
 removed run's per-run transcript file. The run-management half of the cross-skill
 **project-delete** cascade.
 
@@ -9,11 +9,27 @@ wrote before; `transcript` stays read-only). It REUSES the `runs/`-confined
 `_transcript_path` helper (copied from `transcript`/`bulk_seed`) so a
 traversal-shaped run id can never delete a file outside `runs/`.
 
+## Matching a run for removal
+
+Run records do **not** carry a `project` field: `create` stamps only `taskId`, so
+a real (live) run has a `taskId` but no `project` (only `bulk_seed`-restored
+records may carry one). Matching on `project` alone would miss every live run. So
+a run is removed if EITHER:
+
+- its `taskId` is in `task_ids` — the project's deleted task ids, passed by Flow
+  from `task-management.delete_project`'s `deletedTaskIds` (**the real path**), OR
+- `project` is non-empty **and** `run["project"] == project` — the
+  `bulk_seed`-restored fallback.
+
 ## Inputs (all strings)
 
 | Param | Default | Description |
 |---|---|---|
-| `project` | `""` | The project slug whose run records (and transcripts) are removed. `""`/whitespace → no-op |
+| `project` | `""` | Project slug; matches `bulk_seed`-restored runs that carry a `project` field |
+| `task_ids` | `""` | JSON-encoded list of task ids (the project's deleted task ids). A run whose `taskId` is in this set is removed. `""`/missing → empty set |
+
+Both `project` and `task_ids` empty → no-op. A non-list `task_ids` raises a clear
+error.
 
 ## Output ack shape
 
@@ -24,20 +40,20 @@ traversal-shaped run id can never delete a file outside `runs/`.
 }
 ```
 
-- `runsRemoved` — run records dropped from `runs.json` (matched on the camelCase
-  `project` field).
+- `runsRemoved` — run records dropped from `runs.json` (matched by `taskId` ∈
+  `task_ids`, or by `project`).
 - `transcriptsRemoved` — `runs/<runId>.ndjson` files actually deleted. A removed
   run whose transcript file was already absent — or whose id resolves outside
   `runs/` — counts as skipped, not removed, so `transcriptsRemoved ≤ runsRemoved`.
 
 ## Behaviour
 
-1. **Empty-project guard.** `""`/whitespace `project` → return zero counts, no
-   lock, no write, never an error.
+1. **No-op guard.** Both `project` (after strip) and `task_ids` (parsed) empty →
+   return zero counts, no lock, no write, never an error.
 2. `_load_doc("runs")` (exclusive flock on the `runs` collection across
    load→save); raises on a corrupt-but-present `runs.json`.
-3. Collect the `id` of every run whose `project` equals `project`; drop those
-   records from `doc["runs"]`. Every other collection is left untouched.
+3. Collect the `id` of every run matched by the rule above; drop those records
+   from `doc["runs"]`. Every other collection is left untouched.
 4. `_save_doc(doc)` — writes only the changed `runs` collection (dirty-snapshot
    logic) via atomic `tmp` + `os.replace`, then releases the lock.
 5. **Transcripts**: for each removed run id, resolve `runs/<runId>.ndjson` with
@@ -48,7 +64,7 @@ traversal-shaped run id can never delete a file outside `runs/`.
 
 ## Idempotency
 
-Re-running `delete_project` on an already-deleted project (or one that never had
-runs) finds no matching records, returns `{"runsRemoved": 0, "transcriptsRemoved":
-0}`, and writes nothing. Transcript deletion is best-effort, so a partially-deleted
-project re-run cleans up whatever remains without crashing.
+Re-running `delete_project` on an already-deleted project (no run's `taskId`
+matches and no run carries the `project`) returns `{"runsRemoved": 0,
+"transcriptsRemoved": 0}` and writes nothing. Transcript deletion is best-effort,
+so a partially-deleted project re-run cleans up whatever remains without crashing.

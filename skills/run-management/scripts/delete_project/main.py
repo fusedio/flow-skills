@@ -4,18 +4,33 @@ Writes ``~/.openfused/app/state.json`` (or the directory named by
 ``OPENFUSED_APP_DIR_STATE``) directly with stdlib; no third-party imports.
 
 This is the run-management half of the cross-skill **project-delete** cascade:
-it deletes the run records whose camelCase ``project`` field equals the named
-project, and removes each removed run's per-run transcript
-``<app_dir>/runs/<runId>.ndjson``. It is the FIRST destructive write op in
-run-management — only ``bulk_seed`` wrote before (``transcript`` stays read-only,
-``create``/``finish``/… only mutate single records). It REUSES ``_transcript_path``
-(copied from ``transcript``/``bulk_seed``) so a traversal-shaped run id can never
-delete an ``.ndjson`` file outside ``runs/``.
+it deletes the run records belonging to the named project, and removes each
+removed run's per-run transcript ``<app_dir>/runs/<runId>.ndjson``. It is the
+FIRST destructive write op in run-management — only ``bulk_seed`` wrote before
+(``transcript`` stays read-only, ``create``/``finish``/… only mutate single
+records). It REUSES ``_transcript_path`` (copied from ``transcript``/``bulk_seed``)
+so a traversal-shaped run id can never delete an ``.ndjson`` file outside
+``runs/``.
 
-Params
-------
+Matching a run for removal
+--------------------------
+Run records do NOT carry a ``project`` field: ``create`` stamps only ``taskId``,
+so a real (live) run has a ``taskId`` but no ``project`` (only ``bulk_seed``-
+restored records may carry one). Matching on ``project`` alone would miss every
+live run. So a run is removed if EITHER:
+
+- its ``taskId`` is in *task_ids* — the project's deleted task ids, passed by Flow
+  from ``task-management.delete_project``'s ``deletedTaskIds`` (the real path), OR
+- *project* is non-empty AND ``run.get("project") == project`` — the
+  ``bulk_seed``-restored fallback.
+
+Params (all strings)
+--------------------
 project : str
-    The project slug whose run records (and their transcripts) are removed.
+    The project slug; matches ``bulk_seed``-restored runs that carry a ``project``.
+task_ids : str
+    A JSON-encoded list of task ids (the project's deleted task ids). A run whose
+    ``taskId`` is in this set is removed. ``""``/missing → empty set.
 
 Returns
 -------
@@ -29,10 +44,9 @@ dict
 
 Idempotency
 -----------
-An empty/whitespace ``project`` — and any project with no matching runs — is a
-no-op that returns zero counts and writes nothing. A removed run whose transcript
-file is already absent (or whose id resolves outside ``runs/``) counts as skipped,
-so a re-run never raises.
+Both *project* and *task_ids* empty → a no-op that returns zero counts and writes
+nothing. A removed run whose transcript file is already absent (or whose id
+resolves outside ``runs/``) counts as skipped, so a re-run never raises.
 """
 
 import atexit
@@ -187,33 +201,55 @@ def _save_doc(doc: dict) -> None:
 # --- end per-entity state helpers ------------------------------------------
 
 
-@udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
-def delete_project(project: str = "", app_dir: str = "") -> dict:
-    """Remove every run record for ``project`` and its per-run transcript file.
+def _parse_task_ids(raw: str) -> set:
+    """``task_ids`` is a JSON-encoded list of task ids; ``""``/missing → empty set.
+    A non-list payload is a hard error (the caller controls the boundary shape)."""
+    if not raw:
+        return set()
+    parsed = json.loads(raw)
+    if not isinstance(parsed, list):
+        raise ValueError(f"task_ids must be a JSON array, got {type(parsed).__name__}")
+    return set(parsed)
 
-    One atomic ``_load_doc → mutate → _save_doc`` cycle over ``runs``, then a
-    best-effort delete of each removed run's ``runs/<runId>.ndjson`` (path-confined
-    via ``_transcript_path`` — a traversal-shaped id is skipped). Idempotent: an
-    empty/whitespace ``project`` — or one with no runs — returns zero counts and
-    writes nothing; a missing transcript file counts as skipped.
+
+@udf  # ty: ignore[unresolved-reference]  # noqa: F821 — injected by the exec runtime
+def delete_project(project: str = "", task_ids: str = "", app_dir: str = "") -> dict:
+    """Remove the named project's run records and their per-run transcript files.
+
+    A run is removed if its ``taskId`` is in *task_ids* (the project's deleted task
+    ids — the real path, since live runs carry no ``project``) OR *project* is
+    non-empty and ``run["project"] == project`` (the ``bulk_seed``-restored
+    fallback). One atomic ``_load_doc → mutate → _save_doc`` cycle over ``runs``,
+    then a best-effort delete of each removed run's ``runs/<runId>.ndjson``
+    (path-confined via ``_transcript_path`` — a traversal-shaped id is skipped).
+    Idempotent: both *project* and *task_ids* empty — or no runs match — returns
+    zero counts and writes nothing; a missing transcript file counts as skipped.
 
     Args:
-        project: the project slug whose run records (and their transcripts) are removed.
+        project: project slug; matches ``bulk_seed``-restored runs carrying a ``project``.
+        task_ids: JSON-encoded list of task ids; a run whose ``taskId`` is in it is removed.
         app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
     if app_dir:
         os.environ["OPENFUSED_APP_DIR_STATE"] = app_dir
 
-    # No-op for an empty/whitespace project: never lock or write, never raise.
-    if not project.strip():
+    project = project.strip()
+    task_id_set = _parse_task_ids(task_ids)
+
+    # No-op when there is nothing to match on: never lock or write, never raise.
+    if not project and not task_id_set:
         return {"runsRemoved": 0, "transcriptsRemoved": 0}
+
+    def _matches(run: dict) -> bool:
+        # Match on taskId (the real live path) OR a bulk_seed-restored project field.
+        return run.get("taskId") in task_id_set or (bool(project) and run.get("project") == project)
 
     doc = _load_doc("runs")
     runs: list[dict] = doc.get("runs") or []
 
-    # Collect this project's run ids, then drop those records.
-    removed_ids = [r.get("id") for r in runs if r.get("project") == project]
-    remaining_runs = [r for r in runs if r.get("project") != project]
+    # Collect matching run ids, then drop those records.
+    removed_ids = [r.get("id") for r in runs if _matches(r)]
+    remaining_runs = [r for r in runs if not _matches(r)]
     runs_removed = len(runs) - len(remaining_runs)
 
     doc["runs"] = remaining_runs

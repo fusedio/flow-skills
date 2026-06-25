@@ -256,18 +256,24 @@ that already exists, so it cannot collide with a live run's log.
 ### delete_project
 
 ```
-delete_project(project: str = "") -> dict
+delete_project(project: str = "", task_ids: str = "") -> dict
 ```
 
-Purges a whole project from the run store: drops every run record whose `project`
-matches, and deletes each removed run's per-run transcript
-`<app_dir>/runs/<runId>.ndjson`. This is the **first destructive write op** in
-run-management (and the **first transcript DELETER**) — on the cross-skill
-project-delete path. Transcript deletion REUSES the `runs/`-confined
-`_transcript_path` helper, so a traversal-shaped run id can never remove a file
-outside `runs/` (it counts as skipped). Idempotent: an empty/whitespace `project`,
-or one with no runs, returns zero counts and writes nothing; a missing transcript
-file counts as skipped. Returns an ack:
+Purges a whole project from the run store: drops the project's run records and
+deletes each removed run's per-run transcript `<app_dir>/runs/<runId>.ndjson`.
+This is the **first destructive write op** in run-management (and the **first
+transcript DELETER**) — on the cross-skill project-delete path.
+
+**Matching.** Run records carry no `project` (the `create` UDF stamps only
+`taskId`; only `bulk_seed`-restored runs may carry one), so a run is removed if
+EITHER its `taskId` is in `task_ids` — a JSON-encoded list of the project's
+deleted task ids, passed by Flow from `task-management.delete_project`'s
+`deletedTaskIds` (**the real path**) — OR `project` is non-empty and
+`run["project"]` matches (the `bulk_seed`-restored fallback). Transcript deletion
+REUSES the `runs/`-confined `_transcript_path` helper, so a traversal-shaped run
+id can never remove a file outside `runs/` (it counts as skipped). Idempotent:
+both `project` and `task_ids` empty, or no runs match, returns zero counts and
+writes nothing; a missing transcript file counts as skipped. Returns an ack:
 
 ```json
 { "runsRemoved": 3, "transcriptsRemoved": 2 }

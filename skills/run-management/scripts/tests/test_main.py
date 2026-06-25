@@ -56,15 +56,19 @@ def _seed_runs(load_udf, app_dir, runs, transcripts):
     )
 
 
-def test_delete_project_removes_only_named_project(load_udf, tmp_path, monkeypatch):
+def test_delete_project_removes_only_named_project_by_task_ids(load_udf, tmp_path, monkeypatch):
+    """The REAL path: live runs carry `taskId` but NO `project`. Flow passes the
+    project's deleted task ids as `task_ids`; only runs on those tasks (and their
+    transcripts) are removed, other projects' runs+transcripts stay intact."""
     monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    # Realistic records: taskId set, no project field (as `create` would stamp).
     _seed_runs(
         load_udf,
         tmp_path,
         runs=[
-            {"id": "run_a1", "taskId": "t1", "project": "alpha", "status": "completed"},
-            {"id": "run_a2", "taskId": "t2", "project": "alpha", "status": "failed"},
-            {"id": "run_b1", "taskId": "t3", "project": "beta", "status": "completed"},
+            {"id": "run_a1", "taskId": "t1", "status": "completed"},
+            {"id": "run_a2", "taskId": "t2", "status": "failed"},
+            {"id": "run_b1", "taskId": "t3", "status": "completed"},
         ],
         transcripts={
             "run_a1": [{"type": "msg", "text": "a1"}],
@@ -73,7 +77,10 @@ def test_delete_project_removes_only_named_project(load_udf, tmp_path, monkeypat
         },
     )
 
-    ack = load_udf("delete_project", "delete_project")(project="alpha", app_dir=str(tmp_path))
+    # alpha owned tasks t1, t2 (its deleted task ids); beta owned t3.
+    ack = load_udf("delete_project", "delete_project")(
+        project="alpha", task_ids=json.dumps(["t1", "t2"]), app_dir=str(tmp_path)
+    )
     assert ack == {"runsRemoved": 2, "transcriptsRemoved": 2}
 
     # beta's run + transcript survive; alpha's records and files are gone
@@ -84,9 +91,10 @@ def test_delete_project_removes_only_named_project(load_udf, tmp_path, monkeypat
     assert not (tmp_path / "runs" / "run_a2.ndjson").exists()
 
 
-def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypatch):
+def test_delete_project_matches_bulk_seed_project_fallback(load_udf, tmp_path, monkeypatch):
+    """The fallback path: a `bulk_seed`-restored run may carry a `project` field.
+    With no `task_ids`, such runs are matched on `project` alone."""
     monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
-    delete_project = load_udf("delete_project", "delete_project")
     _seed_runs(
         load_udf,
         tmp_path,
@@ -97,25 +105,49 @@ def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypat
         transcripts={"run_a1": [{"type": "msg", "text": "a1"}]},
     )
 
-    first = delete_project(project="alpha", app_dir=str(tmp_path))
+    # project only (no task_ids) still removes the project-stamped run.
+    ack = load_udf("delete_project", "delete_project")(project="alpha", app_dir=str(tmp_path))
+    assert ack == {"runsRemoved": 1, "transcriptsRemoved": 1}
+    assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_b1"}
+
+
+def test_delete_project_idempotent_rerun_and_empty(load_udf, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    delete_project = load_udf("delete_project", "delete_project")
+    _seed_runs(
+        load_udf,
+        tmp_path,
+        runs=[
+            {"id": "run_a1", "taskId": "t1", "status": "completed"},
+            {"id": "run_b1", "taskId": "t2", "status": "completed"},
+        ],
+        transcripts={"run_a1": [{"type": "msg", "text": "a1"}]},
+    )
+
+    first = delete_project(task_ids=json.dumps(["t1"]), app_dir=str(tmp_path))
     assert first == {"runsRemoved": 1, "transcriptsRemoved": 1}
 
-    # re-run on the now-empty project: zero counts, no transcript to remove
-    second = delete_project(project="alpha", app_dir=str(tmp_path))
+    # re-run with the same task_ids: nothing matches now, no transcript to remove
+    second = delete_project(task_ids=json.dumps(["t1"]), app_dir=str(tmp_path))
     assert second == {"runsRemoved": 0, "transcriptsRemoved": 0}
 
-    # empty/whitespace project is a no-op
-    assert delete_project(project="", app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
-    assert delete_project(project="   ", app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
+    # both project AND task_ids empty → no-op (also empty/whitespace project + "[]")
+    assert delete_project(app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
+    assert delete_project(project="   ", task_ids="", app_dir=str(tmp_path)) == {
+        "runsRemoved": 0,
+        "transcriptsRemoved": 0,
+    }
+    assert delete_project(task_ids="[]", app_dir=str(tmp_path)) == {"runsRemoved": 0, "transcriptsRemoved": 0}
 
-    # beta untouched
+    # beta untouched throughout
     assert {r["id"] for r in load_udf("read", "read")(app_dir=str(tmp_path))} == {"run_b1"}
 
 
 def test_delete_project_skips_traversal_shaped_id(load_udf, tmp_path, monkeypatch):
     """A run whose id resolves outside runs/ must not let delete_project remove a
     foreign file: the run record is still dropped, but the file is left alone and
-    counted as skipped (transcriptsRemoved < runsRemoved)."""
+    counted as skipped (transcriptsRemoved < runsRemoved). Driven via task_ids,
+    the real path."""
     monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
 
     # A sentinel that a traversal id like "../state/secret" would resolve onto.
@@ -124,20 +156,22 @@ def test_delete_project_skips_traversal_shaped_id(load_udf, tmp_path, monkeypatc
     sentinel = state_dir / "secret.ndjson"
     sentinel.write_text("keep me\n", encoding="utf-8")
 
-    # Seed two alpha runs: one with a normal id (real transcript), one with a
+    # Seed two alpha-task runs: one with a normal id (real transcript), one with a
     # traversal-shaped id (bulk_seed itself path-confines, so no file is written).
     _seed_runs(
         load_udf,
         tmp_path,
         runs=[
-            {"id": "run_ok", "taskId": "t1", "project": "alpha", "status": "completed"},
-            {"id": "../state/secret", "taskId": "t2", "project": "alpha", "status": "completed"},
+            {"id": "run_ok", "taskId": "t1", "status": "completed"},
+            {"id": "../state/secret", "taskId": "t2", "status": "completed"},
         ],
         transcripts={"run_ok": [{"type": "msg", "text": "ok"}]},
     )
     assert (tmp_path / "runs" / "run_ok.ndjson").exists()
 
-    ack = load_udf("delete_project", "delete_project")(project="alpha", app_dir=str(tmp_path))
+    ack = load_udf("delete_project", "delete_project")(
+        task_ids=json.dumps(["t1", "t2"]), app_dir=str(tmp_path)
+    )
     # both run records dropped; only the legitimate transcript removed
     assert ack == {"runsRemoved": 2, "transcriptsRemoved": 1}
     assert not (tmp_path / "runs" / "run_ok.ndjson").exists()

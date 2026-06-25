@@ -27,9 +27,9 @@ This is the main path from a user request to a running, viewable result.
 2. **`openfused-widgets`** — when the desired output is a **widget/dashboard**
    rather than raw data: the py-UDF-computes → json-widget-visualizes pattern,
    the `{{ref}}`/`$param` data grammar, and the surfaces that render it
-   (`openfused widget open`, `openfused inloop`, deployed URL).
+   (`fused widget open`, `fused inloop`, deployed URL).
 3. **`openfused-feedback`** — to put a question, approval, or plan-review UI in
-   front of the human and get the answer back as JSON (`openfused widget open` /
+   front of the human and get the answer back as JSON (`fused widget open` /
    parley). Use whenever a structured choice beats plain terminal text.
 
 ### Run and validate code
@@ -41,9 +41,9 @@ This is the main path from a user request to a running, viewable result.
   mint download URLs, upload) and manage secrets via the MCP tools.
 
 ### Reach for the CLI
-- **`openfused-cli`** — full `openfused` command/flag reference: environments,
+- **`openfused-cli`** — full `fused` command/flag reference: environments,
   file storage, secrets, code execution, infra. Use when writing or explaining
-  shell commands that invoke `openfused`.
+  shell commands that invoke `fused`.
 
 ### Manage the OpenFused App state (`_core`)
 These expose the App state store as live UDFs — use when working with the app's

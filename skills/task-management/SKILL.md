@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 The App task store exposed as live UDFs. These UDFs own the local task store at
 `~/.openfused/app/state.json`; an agent drives them over the local execution
-layer started with `openfused dev serve`.
+layer started with `fused dev serve`.
 
 ## What this project is
 
@@ -25,11 +25,11 @@ Both endpoints are addressed with `?t=<token>&workspace=_core&project=task-manag
 
 ## Access pattern
 
-Start the local execution layer. `openfused dev serve` binds a loopback server,
+Start the local execution layer. `fused dev serve` binds a loopback server,
 prints ONE JSON handshake line, then runs in the foreground:
 
 ```
-openfused dev serve
+fused dev serve
 {"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
 # Export the origin + token from that handshake line:
@@ -77,7 +77,7 @@ accepts the optional `app_dir` string param; when omitted the env-var/default
 chain applies, so existing callers are unaffected.
 
 Two-writer last-write-wins clobber is accepted in this POC (locking is out of
-scope). The exec runtime injects an `openfused` shim that shadows the real
+scope). The exec runtime injects an `fused` shim that shadows the real
 package, so UDFs reach `state.json` directly.
 
 ## Operations
@@ -229,7 +229,7 @@ The config ships **inside the wheel** as a saved widget of this project, at
 on first run with no authoring step — open it with:
 
 ```bash
-openfused widget open ~/.openfused/core/task-management/widgets/task_board.json
+fused widget open ~/.openfused/core/task-management/widgets/task_board.json
 ```
 
 The shipped config:
@@ -270,9 +270,9 @@ Scope to one project by setting `"project": "<slug>"` and filtering in the read
 SQL (`... WHERE project = '<slug>'`).
 
 > **Where it resolves.** The board needs `_core.*` cross-project refs to resolve.
-> That works on every **local** surface — `openfused widget open`
+> That works on every **local** surface — `fused widget open`
 > / the parley (dev serve's directory-addressed mode injects the built-in `_core`
-> shared root) and the app's dev serve (`openfused dev serve` / `openfused inloop`).
+> shared root) and the app's dev serve (`fused dev serve` / `fused inloop`).
 > Only the **deployed-serve** bundle has no `_core` resolve context (no daemon),
 > so the task-board renders "unavailable" there.
 >
@@ -300,7 +300,7 @@ scripts/
 └── bulk_seed/ …
 ```
 
-Source lives in the wheel under `openfused/_core/task-management/` (read-only).
+Source lives in the wheel under `fused/_core/task-management/` (read-only).
 The local-backend venv materializes at `~/.openfused/core/task-management/scripts/.venv`
 on first startup. Adding a new op = add `scripts/<name>/{main.py,spec.md}` and
 re-register in `openfused.toml`.

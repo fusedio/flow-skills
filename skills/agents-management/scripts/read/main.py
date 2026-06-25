@@ -1,6 +1,6 @@
 """Read UDF — return persona records from the live app roster directory.
 
-Reads the global agent roster In-Loop (``openfused inloop``) owns —
+Reads the global agent roster In-Loop (``fused inloop``) owns —
 ``~/.openfused/app/agents/`` (or ``$OPENFUSED_APP_DIR_STATE/agents``) — one
 ``<slug>/AGENTS.md`` per persona (YAML frontmatter + prompt body) merged with the
 ``.openfused.yaml`` vendor sidecar (adapter / model / builtin). Mirrors

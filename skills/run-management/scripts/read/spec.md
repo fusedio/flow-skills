@@ -45,5 +45,5 @@ runs (there is no separate queued value).
 
 - Read-only. The Express app/launcher is the sole writer of run state.
 - Stdlib-only; reaches `state.json` directly (the exec sandbox shadows the real
-  `openfused` package with a shim, so the store class is not importable).
+  `fused` package with a shim, so the store class is not importable).
 - A missing / unparseable `state.json` yields an empty `runs` list, not an error.

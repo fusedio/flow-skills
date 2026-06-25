@@ -1,21 +1,21 @@
 ---
 name: openfused-verify
-description: Security scanning, testing, and correctness validation for code running in openfused. Use when writing or reviewing verify_code, test_code, get_audit_log calls, or when advising on security policy, spec checks, data expectations, or code quality in the openfused context.
+description: Security scanning, testing, and correctness validation for code running in openfused. Use when writing or reviewing verify_code, test_code, get_audit_log calls, or when advising on security policy, spec checks, data expectations, or code quality in the fused context.
 ---
 
-# Security, testing, and validation in openfused
+# Security, testing, and validation in fused
 
 ## Overview
 
-openfused has several complementary quality layers that can be applied to code before or after execution:
+fused has several complementary quality layers that can be applied to code before or after execution:
 
 | Layer | Tool | What it checks |
 |---|---|---|
-| Security scan | `verify_code` / `openfused code verify` | Code patterns, input file safety |
+| Security scan | `verify_code` / `fused code verify` | Code patterns, input file safety |
 | Spec conformance | `verify_code(spec=...)` | LLM check: does code match intent? |
 | Correctness | `execute_code(expectations=...)` | Output schema, null rates, row counts |
-| Test suite | `test_code` / `openfused code test` | Pytest + line/branch coverage in Lambda |
-| Audit | `get_audit_log` / `openfused audit log` | What ran, what was blocked |
+| Test suite | `test_code` / `fused code test` | Pytest + line/branch coverage in Lambda |
+| Audit | `get_audit_log` / `fused audit log` | What ran, what was blocked |
 
 These layers are complementary. Use them in combination for critical or production code paths.
 
@@ -98,13 +98,13 @@ When to use spec checks:
 - High-stakes transformations where incorrect code would silently produce wrong results
 - Any time you want a second opinion before running expensive or destructive code
 
-Requires an Anthropic API key, resolved in order: `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) in the server environment, then the `anthropic-api-key` secret in the resolved environment's secrets backend — store it once with `put_secret("anthropic-api-key", "sk-ant-...")` (or `openfused secrets put anthropic-api-key sk-ant-...`) and no server env var is needed. On AWS environments the secret name must carry the env's function prefix (the standard `put_secret` naming rule), e.g. `openfused-anthropic-api-key`. If no key is found, a `spec/review-error` warning is emitted and execution proceeds.
+Requires an Anthropic API key, resolved in order: `ANTHROPIC_API_KEY` (or `ANTHROPIC_AUTH_TOKEN`) in the server environment, then the `anthropic-api-key` secret in the resolved environment's secrets backend — store it once with `put_secret("anthropic-api-key", "sk-ant-...")` (or `fused secrets put anthropic-api-key sk-ant-...`) and no server env var is needed. On AWS environments the secret name must carry the env's function prefix (the standard `put_secret` naming rule), e.g. `openfused-anthropic-api-key`. If no key is found, a `spec/review-error` warning is emitted and execution proceeds.
 
 ### Per-UDF specs (`spec.md`)
 
 In the workspace model, each UDF carries a `spec.md` in its own folder under `scripts/` — `taxi-pipeline/scripts/taxi-analysis/spec.md`, `taxi-pipeline/scripts/trip-dashboard/spec.md`. The flat `<stem>.spec.md` sidecar convention is removed.
 
-- `openfused code verify <file> --spec "..."` still works for ad-hoc verification outside a UDF folder.
+- `fused code verify <file> --spec "..."` still works for ad-hoc verification outside a UDF folder.
 - The flat sidecar auto-discovery and `--no-spec` flag are **removed** (Sub-plan A). Pass `--spec TEXT` explicitly when you want a spec check outside a UDF context.
 - Over MCP, pass the UDF's `spec.md` content as `spec=` when executing or verifying that UDF's entrypoint.
 - The per-call `spec=` parameter to `execute_code` and `verify_code` is unchanged.
@@ -113,7 +113,7 @@ In the workspace model, each UDF carries a `spec.md` in its own folder under `sc
 
 ## Correctness expectations (`execute_code`)
 
-After execution, openfused can validate the return value against a data quality contract. Pass `expectations` to `execute_code`:
+After execution, fused can validate the return value against a data quality contract. Pass `expectations` to `execute_code`:
 
 ```python
 result = await mcp__openfused__execute_code(
@@ -130,7 +130,7 @@ result = await mcp__openfused__execute_code(
 )
 ```
 
-For expectations to work, the code must assign `result` to a JSON string with this shape (openfused's DataFrame helper does this automatically):
+For expectations to work, the code must assign `result` to a JSON string with this shape (fused's DataFrame helper does this automatically):
 
 ```json
 {
@@ -208,16 +208,16 @@ Filter parameters:
 - `limit`: max events to return (default 50)
 - `status`: `"allowed"`, `"blocked"`, or `"warned"`
 - `event_type`: `"execute_code"`, `"verify_code"`, or `"cache_clear"`
-- `project`: the workspace project the event was recorded under (every event is stamped with the resolved project's name — `null` in global scope). CLI: `openfused audit log --project NAME`.
+- `project`: the workspace project the event was recorded under (every event is stamped with the resolved project's name — `null` in global scope). CLI: `fused audit log --project NAME`.
 - `start_date` / `end_date`: ISO date strings (`"YYYY-MM-DD"`). When provided and an `audit_bucket` is configured, S3 is also queried so events from past sessions or other server instances are included.
 
-For durable cross-instance audit history, configure an `audit_bucket` (S3 with Object Lock) in the environment via `openfused env update --audit-bucket`. Events are written to both the local DB and S3; `get_audit_log` with a date range merges both sources.
+For durable cross-instance audit history, configure an `audit_bucket` (S3 with Object Lock) in the environment via `fused env update --audit-bucket`. Events are written to both the local DB and S3; `get_audit_log` with a date range merges both sources.
 
 ---
 
 ## Verify configuration
 
-Verify policy is configured **per environment** via `openfused env create/update`. There is no separate config file.
+Verify policy is configured **per environment** via `fused env create/update`. There is no separate config file.
 
 ### Common fields
 
@@ -228,10 +228,10 @@ Verify policy is configured **per environment** via `openfused env create/update
 
 ```bash
 # Enable verify + audit logging
-openfused env update myenv --audit-bucket my-audit-bucket
+fused env update myenv --audit-bucket my-audit-bucket
 
 # Require a spec on every execution
-openfused env update myenv --require-spec
+fused env update myenv --require-spec
 ```
 
 Verify is **automatically enabled** when either `audit_bucket` or `require_spec` is set. It is disabled when both are absent.
@@ -241,7 +241,7 @@ Verify is **automatically enabled** when either `audit_bucket` or `require_spec`
 For complete control, pass a JSON object to `--verify`:
 
 ```bash
-openfused env update myenv --verify '{"enabled": true, "typecheck": true}'
+fused env update myenv --verify '{"enabled": true, "typecheck": true}'
 ```
 
 | Field | Default | Effect |
@@ -255,17 +255,17 @@ openfused env update myenv --verify '{"enabled": true, "typecheck": true}'
 
 ### Type-checking (`code/type-error`)
 
-When `typecheck: true`, openfused runs `ty` (Astral's fast type-checker) on Python code before execution:
+When `typecheck: true`, fused runs `ty` (Astral's fast type-checker) on Python code before execution:
 
 - **Fast mode** (default): runs `ty` from the host `PATH`; import-resolution errors (`import-unresolved`, etc.) are suppressed since user packages aren't installed in the server process.
 - **Docker mode** (`typecheck_docker: true` + requirements provided): builds a Docker image with user packages + `ty` installed, so all imports resolve correctly. The typecheck image is content-addressed on the base image + package set, so a repeat scan with the same inputs reuses it. Requires the `docker` CLI on PATH.
 
 ```bash
 # Fast type-checking (no Docker required)
-openfused env update myenv --verify '{"enabled": true, "typecheck": true}'
+fused env update myenv --verify '{"enabled": true, "typecheck": true}'
 
 # Full type-checking with package installs
-openfused env update myenv --verify '{"enabled": true, "typecheck": true, "typecheck_docker": true}'
+fused env update myenv --verify '{"enabled": true, "typecheck": true, "typecheck_docker": true}'
 ```
 
 Type errors appear as `code/type-error` WARN findings. They do not block execution by default; raise the severity to BLOCK if needed via the `rules` field.

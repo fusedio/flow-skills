@@ -10,7 +10,7 @@ The App run store exposed as live UDFs — the **durable system of record for ru
 records**. Reads and writes `~/.openfused/app/state.json` (run records) and reads
 `~/.openfused/app/runs/<runId>.ndjson` (per-run transcripts). These UDFs own that
 local store; an agent drives them over the local execution layer started with
-`openfused dev serve`.
+`fused dev serve`.
 
 ## What this project is
 
@@ -40,7 +40,7 @@ These UDFs own the **durable run record**. The app keeps the **in-memory
 orchestration** that a sandboxed UDF physically cannot perform: spawning /
 killing the agentbridge subprocess, the live SSE buffer
 (`GET /api/runs/:id/events`), and the run queue. So a run's *effects* stay
-app-side while its *record* is owned here. The `openfused inloop` app routes its run
+app-side while its *record* is owned here. The `fused inloop` app routes its run
 reads **and** writes through these UDFs over the shared `dev serve`
 (`createRun`→`create`, `markRunStarted`→`mark_started`, `finishRun`→`finish`,
 `setRunPrompt`→`set_prompt`, boot `recoverOrphans`'s two run sweeps→`fail_started`
@@ -59,11 +59,11 @@ participates in the live append path, so the hot-path read-only invariant holds.
 
 ## Access pattern
 
-Start the local execution layer. `openfused dev serve` binds a loopback server,
+Start the local execution layer. `fused dev serve` binds a loopback server,
 prints ONE JSON handshake line, then runs in the foreground:
 
 ```
-openfused dev serve
+fused dev serve
 {"origin": "http://127.0.0.1:<port>", "port": <port>, "token": "<token>", "pid": <pid>}
 
 # Export the origin + token from that handshake line:
@@ -265,7 +265,7 @@ The config ships **inside the wheel** as a saved widget of this project, at
 first run with no authoring step — open it with:
 
 ```bash
-openfused widget open ~/.openfused/core/run-management/widgets/runs_table.json
+fused widget open ~/.openfused/core/run-management/widgets/runs_table.json
 ```
 
 The shipped config:
@@ -288,7 +288,7 @@ the nested `usage` object).
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
 > resolve context, which today means the In-Loop app's dev serve
-> (`openfused dev serve` / `openfused inloop`). The deployed-serve bundle has no
+> (`fused dev serve` / `fused inloop`). The deployed-serve bundle has no
 > `_core` resolve context, so a public URL is not supported for this widget.
 
 ## Layout (skill-folder convention)
@@ -307,7 +307,7 @@ scripts/
 └── bulk_seed/
 ```
 
-Source lives in the wheel under `openfused/_core/run-management/` (read-only).
+Source lives in the wheel under `fused/_core/run-management/` (read-only).
 The local-backend venv materializes at
 `~/.openfused/core/run-management/scripts/.venv` on first startup. Adding a new
 op = add `scripts/<name>/{main.py,spec.md}`.

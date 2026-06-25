@@ -69,7 +69,7 @@ def _require_keyring() -> Any:
     if _keyring is None:
         raise RuntimeError(
             "OS keychain unavailable: the 'keyring' package is not installed "
-            "(install the 'local' extra: `pip install openfused[local]`). "
+            "(install the 'local' extra: `pip install fused[local]`). "
             "To use secrets without the local extra, switch to the AWS backend."
         )
     return _keyring

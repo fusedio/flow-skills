@@ -2,13 +2,13 @@
 # run a query with DuckDB's postgres scanner, and write results to S3.
 #
 # Store the connection string first (secret name must start with function prefix):
-#   openfused secrets put openfused-pg-conn "postgresql://user:pass@host:5432/db"
+#   fused secrets put openfused-pg-conn "postgresql://user:pass@host:5432/db"
 #
 # Requirements come from the active environment, not per-call flags:
-#   openfused env update <env> -p duckdb -p duckdb-postgres -p pandas -p pyarrow
+#   fused env update <env> -p duckdb -p duckdb-postgres -p pandas -p pyarrow
 #
 # Usage:
-#   openfused code run examples/duckdb_with_secret.py
+#   fused code run examples/duckdb_with_secret.py
 
 import io
 

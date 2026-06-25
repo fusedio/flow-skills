@@ -1,6 +1,6 @@
 ---
 name: openfused-widgets
-description: Authoring and previewing JSON-UI widgets as the response of running a project — the py-UDF-computes → json-widget-visualizes pattern, the {{ref}}/$param data grammar, how resolution runs through the compute backend, and the CLI/app surfaces (widget open, parley, openfused inloop, deployed URL) that put a rendered widget in front of a human. Use whenever the desired output of a UDF/project is a widget, not raw data.
+description: Authoring and previewing JSON-UI widgets as the response of running a project — the py-UDF-computes → json-widget-visualizes pattern, the {{ref}}/$param data grammar, how resolution runs through the compute backend, and the CLI/app surfaces (widget open, parley, fused inloop, deployed URL) that put a rendered widget in front of a human. Use whenever the desired output of a UDF/project is a widget, not raw data.
 ---
 
 # Widgets — getting a rendered result back
@@ -11,8 +11,8 @@ yields *resolved rows that a renderer turns into a visual*. This skill covers
 authoring widgets and getting them in front of a human.
 
 **There are NO MCP widget tools.** Agents author widget *files*; humans *view*
-them through the CLI (`openfused widget open` / the parley) or the app
-(`openfused inloop`). Everything below is CLI/app, never MCP. (See
+them through the CLI (`fused widget open` / the parley) or the app
+(`fused inloop`). Everything below is CLI/app, never MCP. (See
 `openfused-projects` for where this sits in the project lifecycle, and
 `openfused-cli` for the full `widget` command flag tables.)
 
@@ -26,14 +26,14 @@ of two places in a project — **and the two render on different surfaces, so th
 choice matters:**
 
 - **`widgets/<stem>.json`** — a **saved project dashboard**. This is the form the
-  app's **project surface live-renders**: in `openfused inloop` the project's **Widget**
+  app's **project surface live-renders**: in `fused inloop` the project's **Widget**
   tab lists it and it draws the rendered widget (an **Open ↗** card). **Author here
   when the human will browse the dashboard in the app.**
 - **`scripts/<name>/main.json`** — a **`json`-kind UDF**: a first-class, **deployable**
   entrypoint (deploys to a stable widget URL). On the project surface it appears as
   **source** ("View source ↗"), **not** a live render. Preview it rendered with
-  `openfused widget open scripts/<name>/main.json` (the file render path) or by
-  deploying it — **not** by browsing the project in `openfused inloop`.
+  `fused widget open scripts/<name>/main.json` (the file render path) or by
+  deploying it — **not** by browsing the project in `fused inloop`.
 
 > The config is identical either way (same `{{ref}}`/`$param` grammar), so this is
 > purely *where the file lives*. The default for "show the human a dashboard" is
@@ -216,7 +216,7 @@ for geo data, not an optional extra.
   workspace is reachable (any other first segment → `unknown endpoint`); its
   source is the packaged `core_source_dir()` but it RUNS under the
   **consuming** project's venv, so keep shared UDFs dependency-light. `_core` refs
-  resolve on every local surface — they all route through `openfused dev serve`,
+  resolve on every local surface — they all route through `fused dev serve`,
   whose directory-addressed modes (`?dir=`/`?projectDir=`, used by `widget open` /
   parley) inject the built-in `_core` shared root by default — so a standalone
   widget (e.g. the task-board's `mutateBackend: "core"`) can drive the built-in
@@ -239,7 +239,7 @@ read or act on directly** via a `{{_core.<project>.<udf>}}` ref (read) or a butt
 of OpenFused's own state — a bespoke task board, an inbox triage panel, a run
 monitor — without authoring any backing UDF: bind a chart/table straight to a
 core UDF. No setup, no env, no `uv add` for the core source itself — the
-directory-addressed surfaces (`widget open`, parley, `openfused dev serve`) inject
+directory-addressed surfaces (`widget open`, parley, `fused dev serve`) inject
 the `_core` root automatically.
 
 The shipped `_core` projects and their UDFs:
@@ -337,7 +337,7 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
 - It runs through the same compute backend as reads — **so the project venv needs
   the UDF's imports**, same as the read path. Caching is forced off (a write must
   re-run every press).
-- **Surface scope:** works where there is a local host (the `openfused inloop` app,
+- **Surface scope:** works where there is a local host (the `fused inloop` app,
   `widget open`, parley). On the deployed-serve bundle / MCP-Apps sandbox there is
   no executor, so an `executor` press is a visible no-op (the button still
   renders). Pair `executor` with `action` on the same button to ALSO report a
@@ -353,14 +353,14 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
 
 Before showing a human, confirm the widget actually resolves to data — there is
 no GUI in the loop and `widget open` blocks for a human. Drive the resolve daemon
-the app uses (`openfused dev serve`) directly: it prints one handshake line
+the app uses (`fused dev serve`) directly: it prints one handshake line
 (`{origin, port, token, pid}`), then serves the token-gated
 `POST /api/exec/widget`. Address it in flat directory mode with `?dir=<abs>` (the
 sibling `*.py` next to the widget are passed as inline `sources`):
 
 ```sh
 DIR=~/.openfused/workspaces/default/<project>/scripts/<widget>
-openfused dev serve --timeout 60 >/tmp/ds.out 2>/tmp/ds.err &
+fused dev serve --timeout 60 >/tmp/ds.out 2>/tmp/ds.err &
 # read the handshake (first stdout line)
 read ORIGIN TOKEN < <(python3 -c 'import json;h=json.load(open("/tmp/ds.out"));print(h["origin"],h["token"])')
 # POST the widget config; the body is {"config": <the main.json contents>}
@@ -378,7 +378,7 @@ widget renders empty — so a zero-row dataset is a clean empty widget, not an
 in-card error. The daemon resolves through the project's compute backend, so it
 needs the project venv (`duckdb` + the py UDFs' deps; see above).
 
-> `openfused dev serve` is normally internal plumbing the app spawns — driving it
+> `fused dev serve` is normally internal plumbing the app spawns — driving it
 > directly is the supported way for an **agent** to self-check a widget headlessly.
 
 ---
@@ -387,14 +387,14 @@ needs the project venv (`duckdb` + the py UDFs' deps; see above).
 
 > **CLI / standalone agent: open the widget yourself — do not tell the human to
 > open it.** Once you have authored (and headlessly self-verified) the widget file,
-> *you* run the surface command — `openfused widget open <file>` for a one-shot, or
+> *you* run the surface command — `fused widget open <file>` for a one-shot, or
 > push it into the parley for a standing loop. `widget open` launches/reuses the app
 > server, opens the browser, and blocks until the human responds, handing you their
-> reply. Never end your turn with "open the file in `openfused up` to see it" — that
+> reply. Never end your turn with "open the file in `fused up` to see it" — that
 > strands the human; drive the surface and bring back the result.
 >
-> **⚠ Agents spawned by the `openfused up` app (architect / data-analyst / QA
-> worker runs) MUST NOT run `openfused widget open` / `widget push` / `openfused
+> **⚠ Agents spawned by the `fused up` app (architect / data-analyst / QA
+> worker runs) MUST NOT run `fused widget open` / `widget push` / `fused
 > up`.** Those surfaces wait on a human at a keyboard and would **hang the run** (or
 > collide with the already-running app). In that context the widget flow is
 > different: a `data-analyst` just **writes `widgets/<stem>.json`** and the app
@@ -408,10 +408,10 @@ by the interaction you need:
 
 | You want… | Use | Command | Response back to the agent |
 |---|---|---|---|
-| **One-shot** feedback ("show this, tell me when done") | `widget open` | `openfused widget open scripts/sales-board/main.json` | Blocks until the human submits/closes; prints the final `$param` state as one JSON line to stdout |
+| **One-shot** feedback ("show this, tell me when done") | `widget open` | `fused widget open scripts/sales-board/main.json` | Blocks until the human submits/closes; prints the final `$param` state as one JSON line to stdout |
 | **A standing loop** (push successive views, stream human events) | **parley** | `widget push <cfg>` + `widget watch` (or `widget agent`) | NDJSON event stream (`action`/`close`); push a new view and keep watching |
-| **The project surface** (browse **saved dashboards** with project data) | the app | `openfused inloop` → open the project → **Widget** tab | Human-driven; a feedback task can spawn a follow-up agent run with the human's response. **Only `widgets/<stem>.json` live-renders here** — a `json` UDF shows as source. |
-| **A shareable URL** (stakeholder, no local server) | deploy | `openfused udf deploy sales-board --project <p>` | A rendered widget URL (preview → promote to release) |
+| **The project surface** (browse **saved dashboards** with project data) | the app | `fused inloop` → open the project → **Widget** tab | Human-driven; a feedback task can spawn a follow-up agent run with the human's response. **Only `widgets/<stem>.json` live-renders here** — a `json` UDF shows as source. |
+| **A shareable URL** (stakeholder, no local server) | deploy | `fused udf deploy sales-board --project <p>` | A rendered widget URL (preview → promote to release) |
 
 - `widget open <target>`: `<target>` is a `.json` path or a saved-widget stem.
   It launches/reuses the app server, opens the browser, and blocks. `--no-open`
@@ -424,7 +424,7 @@ by the interaction you need:
     editable** (no durable file), so for an edit-and-refresh loop keep authoring a
     named `.json` and `open` its path. `widget push -c/--config` is the parley
     counterpart (no temp file; `--source PATH` sets the edit anchor).
-  - **`--project-dir PATH`** (only for `.json` file targets): pins `openfused dev
+  - **`--project-dir PATH`** (only for `.json` file targets): pins `fused dev
     serve`'s `?projectDir=` mode to a project directory so UDFs in `scripts/` and the project
     `.venv` are available. Use this when the widget file sits outside the project
     tree but needs that project's UDFs/environment. Mutually exclusive with
@@ -433,9 +433,9 @@ by the interaction you need:
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details
   + flags: `openfused-cli` (widget section).
-- `openfused inloop` renders **saved dashboards** (`widgets/<stem>.json`) **natively**
+- `fused inloop` renders **saved dashboards** (`widgets/<stem>.json`) **natively**
   (no iframe/bundle) with data resolved by the single headless daemon the app
-  owns (`openfused dev serve` — internal plumbing; you never start it yourself). A
+  owns (`fused dev serve` — internal plumbing; you never start it yourself). A
   `json` UDF (`scripts/<name>/main.json`) is **not** live-rendered on the project
   surface — it appears under the UDF drill-in as source/spec; preview a json UDF
   with `widget open` (above) or deploy it.
@@ -452,22 +452,22 @@ by the interaction you need:
 2. Write each UDF's `spec.md`, get spec approval, then write the entrypoint
    yourself: `scripts/<name>/main.py` for a `py` UDF. For the **widget**, pick the
    home by goal (see "What a widget is"): **`widgets/<stem>.json`** if the human
-   will browse it in `openfused inloop` (the only form the project surface
+   will browse it in `fused inloop` (the only form the project surface
    live-renders), or **`scripts/<name>/main.json`** if it's a deployable entrypoint
    (preview via `widget open`, not the project surface). **A `widgets/<stem>.json`
    gets its own `widgets/<stem>.spec.md` sidecar too** (purpose + the data/components
    it binds) — the same spec↔file pairing UDFs have; the app shows it in the widget's
-   Preview ⇄ Spec toggle. Validate py code with `openfused code verify <file>` (or
+   Preview ⇄ Spec toggle. Validate py code with `fused code verify <file>` (or
    MCP `verify_code`) before committing. There is no `udf generate` command — the
    agent authors the file. See `openfused-projects` for the full spec-first flow.
 3. Local backend: `uv add` the deps the py UDFs (and DuckDB) need, then
    `uv sync`.
 4. Preview — **run the surface command yourself; never hand the human a path to
    open.** A **saved dashboard** (`widgets/<stem>.json`): if the human is already in
-   `openfused inloop` it live-renders in the Widget tab, otherwise *you* run `openfused
+   `fused inloop` it live-renders in the Widget tab, otherwise *you* run `fused
    widget open widgets/<stem>.json`. A **`json` UDF** (`scripts/<name>/main.json`):
-   *you* run `openfused widget open scripts/<name>/main.json` (one-shot) or push it
-   into the parley — the project surface in `openfused inloop` shows it as **source**,
+   *you* run `fused widget open scripts/<name>/main.json` (one-shot) or push it
+   into the parley — the project surface in `fused inloop` shows it as **source**,
    not a render. `widget open` blocks until the human responds and returns their
    reply to you. (This is the **CLI / standalone** path. An **in-app worker** never
    runs `widget open` — it writes the `.json` and the app live-renders it; see the
@@ -482,8 +482,8 @@ by the interaction you need:
 ## See also
 
 - `openfused-projects` — the end-to-end lifecycle (env → project → UDF gen →
-  run → widget → `openfused inloop` → deploy), and the spec-first generation loop.
+  run → widget → `fused inloop` → deploy), and the spec-first generation loop.
   Includes the `_core` built-in workspace note.
 - `openfused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
-  `serve`) and the app (`up`); also documents `openfused dev serve` which can
+  `serve`) and the app (`up`); also documents `fused dev serve` which can
   address the built-in `_core` workspace (`workspace="_core"`) with no user setup.

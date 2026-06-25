@@ -1,6 +1,6 @@
 ---
 name: openfused-feedback
-description: Show the human a real browser UI — to ask a question, get an approval/decision, or review a plan — built from OpenFused's JSON-UI primitives and opened with `openfused widget open` (one-shot — inline `--config` or a `.json` file) or the parley (`widget push`/`widget watch`, standing). Use in Claude Code whenever a structured choice, form, approval, or plan review would be clearer than plain terminal text, and you want the human's answer back as JSON.
+description: Show the human a real browser UI — to ask a question, get an approval/decision, or review a plan — built from OpenFused's JSON-UI primitives and opened with `fused widget open` (one-shot — inline `--config` or a `.json` file) or the parley (`widget push`/`widget watch`, standing). Use in Claude Code whenever a structured choice, form, approval, or plan review would be clearer than plain terminal text, and you want the human's answer back as JSON.
 ---
 
 # OpenFused feedback — ask the human through a visual UI
@@ -8,7 +8,7 @@ description: Show the human a real browser UI — to ask a question, get an appr
 Instead of asking the human a question as terminal text, render a **real browser
 UI** and get a **structured answer back as JSON**. You author a small JSON-UI
 config (a tree of `{type, props, children}` nodes — text, inputs, buttons), open
-it with `openfused widget open`, and the command **blocks until the human
+it with `fused widget open`, and the command **blocks until the human
 responds**, then prints their answer on stdout.
 
 This is OpenFused's local feedback loop repackaged for
@@ -39,8 +39,8 @@ planning page you iterate on).
 
 ## Prerequisites
 
-- The **`openfused` CLI** on `PATH`. (Inside an OpenFused source checkout, use
-  `uv run openfused …` instead of `openfused …`.)
+- The **`fused` CLI** on `PATH`. (Inside an OpenFused source checkout, use
+  `uv run fused …` instead of `fused …`.)
 - **Node 20+** on `PATH`. The first `widget open`/`push` **cold-boots two
   servers** — the Node/Express app *and* a Python `dev serve` daemon (first paint
   always resolves through it). Measured: **a few seconds, up to ~13 s** on a truly
@@ -67,13 +67,13 @@ planning page you iterate on).
    - **Inline via stdin** (`--config -`) — the robust one-call path; piping avoids
      shell-quoting a JSON blob full of labels/quotes/`$`. Ideal for one-shot asks:
      ```bash
-     printf '%s' "$CONFIG_JSON" | openfused widget open --config - --port 4477 --timeout 600
+     printf '%s' "$CONFIG_JSON" | fused widget open --config - --port 4477 --timeout 600
      ```
      (`-c '<json>'` accepts a literal string too, but stdin is safer.)
    - **From a file** — use this when you want **edit-and-refresh** (the app
      hot-reads the file on each render) or the parley revise loop:
      ```bash
-     openfused widget open /abs/path/ask.json --port 4477 --timeout 600
+     fused widget open /abs/path/ask.json --port 4477 --timeout 600
      ```
 3. **Read** the single JSON line on stdout — the human's answer.
 
@@ -98,13 +98,13 @@ planning page you iterate on).
 ```
 
 ```bash
-openfused widget open /abs/path/approve.json --port 4477 --timeout 600
+fused widget open /abs/path/approve.json --port 4477 --timeout 600
 ```
 
 Or skip the scratch file and pipe the same config inline (one call):
 
 ```bash
-printf '%s' "$APPROVE_JSON" | openfused widget open --config - --port 4477 --timeout 600
+printf '%s' "$APPROVE_JSON" | fused widget open --config - --port 4477 --timeout 600
 ```
 
 The human's browser opens, they pick a button, and stdout gets **one line**:
@@ -188,7 +188,7 @@ unlike `open --no-open`, which boots only the app and leaves the ~13 s daemon
 spawn for the human's first paint. Pipe the placeholder inline with `--config -`
 so there's no temp file to manage:
 ```bash
-printf '{"type":"text","props":{"value":"warming up…"}}' | openfused widget push --config - --no-open --port 4477
+printf '{"type":"text","props":{"value":"warming up…"}}' | fused widget push --config - --no-open --port 4477
 ```
 By the time you author the real question, the visible call is the ~0.4 s warm
 path, not ~13 s.
@@ -209,7 +209,7 @@ and the Bash tool has its own timeout, so:
 - **Quick confirmations (< ~90s):** foreground with a short `--timeout` and a
   matching Bash `timeout`:
   ```bash
-  openfused widget open /abs/path/ask.json --port 4477 --timeout 90
+  fused widget open /abs/path/ask.json --port 4477 --timeout 90
   ```
   (Set the Bash tool `timeout` a little above `--timeout`.)
 - **Anything open-ended (recommended default):** run it **in the background**
@@ -217,19 +217,19 @@ and the Bash tool has its own timeout, so:
   tool timeout. You're re-invoked when it exits; read the captured stdout (the
   one JSON line):
   ```bash
-  openfused widget open /abs/path/ask.json --port 4477 --timeout 1800
+  fused widget open /abs/path/ask.json --port 4477 --timeout 1800
   ```
 - For a one-shot ask, **`--config -`** skips the scratch file — pipe the JSON in
   on stdin. Use an **absolute file path** instead when you want edit-and-refresh or
   the parley revise loop. Either way the browser opens automatically; pass
   **`--no-open`** on a headless/remote box to just print the page URL to stderr.
-- If `openfused` isn't on `PATH`, prefix with `uv run` from the source checkout.
+- If `fused` isn't on `PATH`, prefix with `uv run` from the source checkout.
 
 ## Iterative planning — the parley
 
 For a **standing** back-and-forth (push plan v1 → human reacts → push v2 → …) use
-the **parley** instead of one-shot `open`: `openfused widget push <file>` updates
-one persistent page, and `openfused widget watch` streams the human's events back
+the **parley** instead of one-shot `open`: `fused widget push <file>` updates
+one persistent page, and `fused widget watch` streams the human's events back
 as NDJSON. It's also the **fast path for any multi-ask flow**: one tab, the ~2 MB
 SPA parsed once, and each push re-renders in place over SSE — so repeated
 questions skip the new-tab + bundle reload that one-shot `open` pays every time.
@@ -250,10 +250,10 @@ human acts; then parse it, author the next view, and `push`. Arm the Monitor
 
 ```
 Monitor(description: "parley human events", persistent: true,
-        command: "openfused widget watch --port 4477 --from latest")
+        command: "fused widget watch --port 4477 --from latest")
 ```
 ```bash
-openfused widget push /abs/path/plan-v1.json --port 4477   # then: react → push → repeat
+fused widget push /abs/path/plan-v1.json --port 4477   # then: react → push → repeat
 ```
 
 Each notification is an **event, not a user reply.** A terminal `action`
@@ -289,15 +289,15 @@ persistent page you iterate on with the parley.
 If `widget open`/`push` errors out, it's almost always **environment**, not the
 config. Check in this order:
 
-1. **Is `openfused` healthy?** Run `openfused --version`. A traceback / `No module
+1. **Is `fused` healthy?** Run `fused --version`. A traceback / `No module
    named …` means the install is broken — reinstall it (e.g. `uv tool install
    --reinstall --editable .` from the source checkout, or `pip install -U
-   openfused`). Inside a source checkout, prefer `uv run openfused …`.
+   fused`). Inside a source checkout, prefer `uv run fused …`.
 2. **`… did not hand-shake within 30s` / `No such command 'data-serve'` / `Cannot
    GET /widget-file/…`** — a **stale app build** is being booted (its bundled app
    code predates the current data daemon). Fix the bundle, not the config: from a
-   source checkout rebuild it (`cd inloop && pnpm build`) or reinstall `openfused`
-   from a current source so it ships a fresh `openfused/_inloop/dist`.
+   source checkout rebuild it (`cd inloop && pnpm build`) or reinstall `fused`
+   from a current source so it ships a fresh `fused/_inloop/dist`.
 3. **A foreign/UI-less app is squatting the port → "Cannot GET /widget-file/…" in
    the browser.** The app binds one loopback port (default `4400`) and **reuses
    whatever already answers there**. If another process (e.g. a stale dev server
@@ -316,7 +316,7 @@ config. Check in this order:
 4. **Verify headlessly** before involving a human — the answer should be a clean
    timeout, not an error:
    ```bash
-   openfused widget open /abs/path/ask.json --no-open --timeout 8
+   fused widget open /abs/path/ask.json --no-open --timeout 8
    # expect: {"action":"timeout"}  (exit 3), and a "widget page: …/widget-file/…" line on stderr
    ```
 

@@ -3,13 +3,13 @@
 Each recipe is a complete JSON-UI config. Open it from a file:
 
 ```bash
-openfused widget open /abs/path/<recipe>.json --port 4477 --timeout 600
+fused widget open /abs/path/<recipe>.json --port 4477 --timeout 600
 ```
 
 …or, for a one-shot ask, skip the file and pipe it inline on stdin (`--config -`):
 
 ```bash
-printf '%s' "$RECIPE_JSON" | openfused widget open --config - --port 4477 --timeout 600
+printf '%s' "$RECIPE_JSON" | fused widget open --config - --port 4477 --timeout 600
 ```
 
 stdout is one JSON line: `{"action":"<button-action>","params":{…}}`. Branch on

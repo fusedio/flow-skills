@@ -14,7 +14,7 @@ local store; an agent drives them over the local execution layer started with
 
 ## What this project is
 
-Seven UDFs over the App run state — two reads and five writes:
+Ten UDFs over the App run state — two reads and eight writes:
 
 - `read` — `RunRecord` rows from `state.json` (`runs[]`).
 - `transcript` — a single run's NDJSON event log (read-only on the hot path; the
@@ -30,6 +30,8 @@ Seven UDFs over the App run state — two reads and five writes:
   `cancelled`; they never ran, so they are cancelled, not failed).
 - `bulk_seed` — restore run records + per-run transcripts **verbatim**
   (insert-if-absent, idempotent). The **first transcript WRITER** in this project.
+- `delete_project` — purge a whole project's run records + their transcript files
+  (the **first transcript DELETER**, on the project-delete path). Idempotent.
 
 Every UDF touches the App files directly with stdlib; no third-party imports in
 UDF logic.
@@ -251,6 +253,42 @@ that already exists, so it cannot collide with a live run's log.
   shadows the package with a shim). Reach the App files directly.
 - All params are strings.
 
+### delete_project
+
+```
+delete_project(project: str = "", task_ids: str = "") -> dict
+```
+
+Purges a whole project from the run store: drops the project's run records and
+deletes each removed run's per-run transcript `<app_dir>/runs/<runId>.ndjson`.
+This is the **first destructive write op** in run-management (and the **first
+transcript DELETER**) — on the cross-skill project-delete path.
+
+**Matching.** Run records carry no `project` (the `create` UDF stamps only
+`taskId`; only `bulk_seed`-restored runs may carry one), so a run is removed if
+EITHER its `taskId` is in `task_ids` — a JSON-encoded list of the project's
+deleted task ids, passed by Flow from `task-management.delete_project`'s
+`deletedTaskIds` (**the real path**) — OR `project` is non-empty and
+`run["project"]` matches (the `bulk_seed`-restored fallback). Transcript deletion
+REUSES the `runs/`-confined `_transcript_path` helper, so a traversal-shaped run
+id can never remove a file outside `runs/` (it counts as skipped).
+
+**Resumable ordering.** Under the `runs` flock, transcript `.ndjson` files are
+deleted FIRST and the pruned `runs.json` is written LAST. The run record is the
+recovery anchor: a crash after some transcripts are gone but before the prune
+leaves every record intact, so a rerun (same `task_ids`) re-finds them and cleans
+the remaining transcripts. Pruning first would orphan any not-yet-deleted
+transcript. Idempotent: both `project` and `task_ids` empty, or no runs match,
+returns zero counts and writes nothing; a missing transcript file counts as
+skipped. Returns an ack:
+
+```json
+{ "runsRemoved": 3, "transcriptsRemoved": 2 }
+```
+
+`transcriptsRemoved ≤ runsRemoved` — a removed run whose `.ndjson` was already
+absent (or whose id resolved outside `runs/`) is skipped, not counted.
+
 ## Rendering as a `sql-table` widget
 
 The `read` UDF is enough to render the run log as a table — no app run store, no
@@ -304,7 +342,8 @@ scripts/
 ├── set_prompt/
 ├── fail_started/
 ├── cancel_queued/
-└── bulk_seed/
+├── bulk_seed/
+└── delete_project/
 ```
 
 Source lives in the wheel under `fused/_core/run-management/` (read-only).

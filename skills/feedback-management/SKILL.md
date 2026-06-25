@@ -25,7 +25,7 @@ those comments from the one shared
 
 > **Phase 1 — system of record for cards.** Both the **read** side
 > (`list_cards`, `get_card`, `list_open_cards`) and the **write** side
-> (`create_card`, `resolve_card`, `cancel_task_cards`) live here. The app's
+> (`create_card`, `resolve_card`, `cancel_task_cards`, `delete_project`) live here. The app's
 > card store is now a **thin async client** over these
 > UDFs — the app no longer writes `state.json.cards`
 > directly. The per-effect 422 resolve VALIDATION + the resolve input →
@@ -55,7 +55,7 @@ UDF logic.
 
 The split is: **read via SQL or UDF** (`{{list_cards}}` / `{{list_open_cards}}`,
 or the `get_card` / `inbox_view` UDFs), **write via UDF** (`create_card` /
-`resolve_card` / `cancel_task_cards`). Reads go via the `/api/exec/sql` endpoint
+`resolve_card` / `cancel_task_cards` / `delete_project`). Reads go via the `/api/exec/sql` endpoint
 and writes via the `/api/exec/udf` endpoint, both addressed with
 `?t=<token>&workspace=_core&project=feedback-management` — see the access pattern
 below.
@@ -204,6 +204,20 @@ Task-cancel cascade: sweeps EVERY `pending` card on `task` to `cancelled`
 `cancelTaskCards`, §5.1). Returns the cancelled records; an empty
 sweep returns `[]` and writes nothing. See `cancel_task_cards/spec.md`.
 
+### delete_project
+
+```
+delete_project(project: str = "") -> dict
+```
+
+Project-delete cascade: removes EVERY interaction card (any status — `pending`
+and terminal alike) whose `project` matches, in ONE whole-document write — the
+feedback-management half of the cross-skill project-delete path. Idempotent: an
+empty/whitespace `project`, or one with no cards, returns `{"cardsRemoved": 0}`
+and writes nothing. Leaves the flat `dismissedFeedbackKeys` set alone (a dangling
+entry for a deleted project is harmless). Returns `{"cardsRemoved": <int>}`. See
+`delete_project/spec.md`.
+
 ### inbox_view
 
 ```
@@ -278,7 +292,10 @@ scripts/
 ├── resolve_card/           # write (pending → terminal)
 │   ├── main.py
 │   └── spec.md
-└── cancel_task_cards/      # write (sweep a task's pending cards)
+├── cancel_task_cards/      # write (sweep a task's pending cards)
+│   ├── main.py
+│   └── spec.md
+└── delete_project/         # write (purge a project's cards)
     ├── main.py
     └── spec.md
 ```

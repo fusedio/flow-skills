@@ -1,2 +1,10 @@
 [project]
 name = "run-management"
+
+[udfs.read]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.transcript]
+kind = "py"
+cache_max_age = "0s"

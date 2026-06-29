@@ -1,2 +1,10 @@
 [project]
 name = "task-management"
+
+[udfs.read]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.list_comments]
+kind = "py"
+cache_max_age = "0s"

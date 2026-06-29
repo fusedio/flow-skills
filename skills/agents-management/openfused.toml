@@ -1,2 +1,6 @@
 [project]
 name = "agents-management"
+
+[udfs.read]
+kind = "py"
+cache_max_age = "0s"

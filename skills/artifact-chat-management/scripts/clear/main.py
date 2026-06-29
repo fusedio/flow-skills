@@ -4,20 +4,24 @@ Stdlib-only. This UDF durably *clears* a chat so it stays cleared after the
 popover is reopened / the page reloaded: it both wipes the persisted transcript
 and resets the record's live-conversation state. Concretely it:
 
-  1. Deletes the flat transcript file ``<app_dir>/artifact-chats/<chat_id>.ndjson``
-     if present (tolerating a missing file — an empty chat has none yet). The path
-     is CONFINED to the real ``artifact-chats/`` directory before unlinking
-     (``chat_id`` is caller-controlled — reuse the run-management ``_transcript_path``
-     confinement, repointed at ``artifact-chats/``); a traversal-shaped id is
-     rejected (not found, no unlink).
-  2. Under the ``artifactChats`` collection flock, resets the record in a
+  1. Under the ``artifactChats`` collection flock, resets the record in a
      whole-document read-modify-write (preserves every other top-level key):
      ``messageCount = 0``, ``lastActivityAt = now``, a NEW ``sessionKey`` (so the
      agentbridge session is fresh — the next turn resumes nothing — minted the same
      way ``create`` mints the create-time fields), and ``title = null``. The
      identity + ref fields are kept: ``id``, ``project``, ``artifactType``,
      ``artifactStem`` (``createdAt`` is also preserved — the chat itself is not
-     re-created, only reset).
+     re-created, only reset). This ``_save_doc`` is the COMMIT POINT.
+  2. Only AFTER the record commits, deletes the flat transcript file
+     ``<app_dir>/artifact-chats/<chat_id>.ndjson`` if present (tolerating a missing
+     file — an empty chat has none yet). The path is CONFINED to the real
+     ``artifact-chats/`` directory before unlinking (``chat_id`` is caller-controlled
+     — reuse the run-management ``_transcript_path`` confinement, repointed at
+     ``artifact-chats/``); a traversal-shaped id is rejected (not found, no unlink).
+     Two-file atomicity is impossible without a journal, so a crash between the
+     commit and the unlink can leave a stale ``.ndjson`` behind — but the record
+     already reads cleared, the self-consistent side of that residual window (the
+     record never lags the history deletion).
 
 This is an APP-ONLY WRITE op (NOT a cross-agent read): only the app calls it, when
 the user clears a chat.
@@ -226,14 +230,10 @@ def clear(chat_id: str = "", app_dir: str = "") -> dict:
 
     chat = next((c for c in chats if c.get("id") == chat_id), None)
     if chat is None:
+        # Not-found ack: the chat id is unknown, so nothing is reset and — crucially —
+        # the transcript is NOT removed (the path-confinement guard already ran, but a
+        # confined path for an unknown id must still be left untouched).
         return {"ok": False, "error": "not found"}
-
-    # Wipe the persisted transcript so the chat stays cleared after reopen/reload.
-    # Tolerate a missing file (an empty chat has no .ndjson yet).
-    try:
-        os.remove(path)
-    except FileNotFoundError:
-        pass
 
     # Reset the live-conversation state. A fresh sessionKey makes the next turn's
     # agentbridge session brand-new (resumes nothing) — minted like `create` mints
@@ -243,5 +243,22 @@ def clear(chat_id: str = "", app_dir: str = "") -> dict:
     chat["sessionKey"] = uuid.uuid4().hex
     chat["title"] = None
     doc["artifactChats"] = chats
+
+    # COMMIT POINT: persist the reset record (the system of record) BEFORE deleting
+    # the transcript. True two-file atomicity is impossible here without a journal,
+    # so a crash can still leave one residual window — but the ordering decides which
+    # side it falls on. If we crashed after _save_doc but before os.remove, the record
+    # already reads cleared (messageCount=0, fresh sessionKey, title=null) while a stale
+    # .ndjson lingers — a harmless, self-correcting state (the next clear/turn wipes it).
+    # The reverse order (remove-then-save, the prior code) could strand the opposite,
+    # contract-violating state: history gone but the record still claiming a non-zero
+    # messageCount + old metadata. So the record must never LAG the history deletion.
     _save_doc(doc)
+
+    # Wipe the persisted transcript so the chat stays cleared after reopen/reload.
+    # Tolerate a missing file (an empty chat has no .ndjson yet).
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
     return chat

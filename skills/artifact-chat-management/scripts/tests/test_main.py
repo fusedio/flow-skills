@@ -340,6 +340,24 @@ def test_clear_not_found_ack(load_udf, tmp_path, monkeypatch):
     }
 
 
+def test_clear_unknown_id_deletes_nothing(load_udf, tmp_path, monkeypatch):
+    """An unknown chat_id whose path IS confined to artifact-chats/ must still delete
+    nothing — the not-found ack returns before the transcript unlink, so a stray
+    same-named .ndjson (no matching record) survives untouched."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    # A real (unrelated) chat so the collection file exists; the cleared id is absent.
+    _create(load_udf, tmp_path, id="chat_real")
+    # Plant a transcript whose confined path matches the unknown id we will clear.
+    orphan = _transcript_file(tmp_path, "chat_orphan")
+    orphan.parent.mkdir(parents=True, exist_ok=True)
+    orphan.write_text(json.dumps({"kind": "human", "text": "stray"}) + "\n", encoding="utf-8")
+
+    ack = load_udf("clear", "clear")(chat_id="chat_orphan", app_dir=str(tmp_path))
+    assert ack == {"ok": False, "error": "not found"}
+    # the unknown chat's transcript was NOT unlinked (not-found ack deletes nothing)
+    assert orphan.exists()
+
+
 def test_clear_confines_traversal_id(load_udf, tmp_path, monkeypatch):
     """A traversal-shaped chat_id whose resolved path escapes artifact-chats/ is
     rejected as not-found — it must not unlink files outside the chat dir."""

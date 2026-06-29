@@ -1,2 +1,30 @@
 [project]
 name = "feedback-management"
+
+[udfs.inbox_view]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.list_cards]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.list_open_cards]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.get_card]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.has_unresolved_message]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.is_feedback_key_dismissed]
+kind = "py"
+cache_max_age = "0s"
+
+[udfs.find_notify_comment]
+kind = "py"
+cache_max_age = "0s"

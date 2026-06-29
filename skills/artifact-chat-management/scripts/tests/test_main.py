@@ -280,6 +280,102 @@ def test_set_title_not_found_ack(load_udf, tmp_path, monkeypatch):
     assert ack == {"ok": False, "error": "not found"}
 
 
+# --- clear: durable reset (wipe transcript + fresh session) ----------------
+
+
+def test_clear_wipes_transcript_and_resets_record(load_udf, tmp_path, monkeypatch):
+    """clear deletes the chat's .ndjson AND resets messageCount/title + mints a NEW
+    sessionKey, keeping id + ref + createdAt — so the chat stays cleared on reopen."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    created = _create(load_udf, tmp_path, id="chat_1", session_key="sk-old")
+    load_udf("append_message", "append_message")(
+        chat_id="chat_1",
+        entry_json=json.dumps({"kind": "human", "text": "q1", "ts": "t1"}),
+        app_dir=str(tmp_path),
+    )
+    load_udf("set_title", "set_title")(chat_id="chat_1", title="My chat", app_dir=str(tmp_path))
+    # precondition: a transcript file + a non-zero count exist before clearing.
+    assert _transcript_file(tmp_path, "chat_1").exists()
+    assert load_udf("read", "read")(app_dir=str(tmp_path))[0]["messageCount"] == 1
+
+    reset = load_udf("clear", "clear")(chat_id="chat_1", app_dir=str(tmp_path))
+
+    # the transcript file is gone (a reopen replays an empty transcript)
+    assert not _transcript_file(tmp_path, "chat_1").exists()
+    # the record is reset: count 0, title null, fresh session
+    assert reset["messageCount"] == 0
+    assert reset["title"] is None
+    assert reset["sessionKey"] != "sk-old" and reset["sessionKey"]
+    assert reset["lastActivityAt"].endswith("Z")
+    # identity + ref + createdAt are KEPT (the chat is reset, not re-created)
+    assert reset["id"] == "chat_1"
+    assert reset["project"] == "p"
+    assert reset["artifactType"] == "widget"
+    assert reset["artifactStem"] == "sales"
+    assert reset["createdAt"] == created["createdAt"]
+    # and it durably persisted to the collection file
+    persisted = load_udf("read", "read")(app_dir=str(tmp_path))[0]
+    assert persisted["messageCount"] == 0
+    assert persisted["sessionKey"] == reset["sessionKey"]
+
+
+def test_clear_tolerates_missing_transcript(load_udf, tmp_path, monkeypatch):
+    """A never-messaged chat has no .ndjson; clear still resets the record (no error)."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    _create(load_udf, tmp_path, id="chat_1", session_key="sk-old")
+    assert not _transcript_file(tmp_path, "chat_1").exists()
+    reset = load_udf("clear", "clear")(chat_id="chat_1", app_dir=str(tmp_path))
+    assert reset["messageCount"] == 0 and reset["sessionKey"] != "sk-old"
+
+
+def test_clear_not_found_ack(load_udf, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    assert load_udf("clear", "clear")(chat_id="nope", app_dir=str(tmp_path)) == {
+        "ok": False,
+        "error": "not found",
+    }
+    assert load_udf("clear", "clear")(chat_id="", app_dir=str(tmp_path)) == {
+        "ok": False,
+        "error": "not found",
+    }
+
+
+def test_clear_confines_traversal_id(load_udf, tmp_path, monkeypatch):
+    """A traversal-shaped chat_id whose resolved path escapes artifact-chats/ is
+    rejected as not-found — it must not unlink files outside the chat dir."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    state_dir = tmp_path / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    sentinel = state_dir / "secret.ndjson"
+    sentinel.write_text(json.dumps({"secret": True}) + "\n", encoding="utf-8")
+    ack = load_udf("clear", "clear")(chat_id="../state/secret", app_dir=str(tmp_path))
+    assert ack == {"ok": False, "error": "not found"}
+    assert sentinel.exists()  # the out-of-dir file was NOT unlinked
+
+
+def test_clear_preserves_other_collections(load_udf, tmp_path, monkeypatch):
+    """The reset write is a whole-document RMW that leaves every other collection's
+    file byte-intact (storage §3 write discipline)."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    state_dir = tmp_path / "state"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    tasks = [{"id": "t1", "title": "keep me"}]
+    runs = [{"id": "run_1", "taskId": "t1"}]
+    (state_dir / "tasks.json").write_text(json.dumps(tasks, indent=2), encoding="utf-8")
+    (state_dir / "runs.json").write_text(json.dumps(runs, indent=2), encoding="utf-8")
+
+    _create(load_udf, tmp_path, id="chat_1")
+    load_udf("append_message", "append_message")(
+        chat_id="chat_1",
+        entry_json=json.dumps({"kind": "human", "text": "q"}),
+        app_dir=str(tmp_path),
+    )
+    load_udf("clear", "clear")(chat_id="chat_1", app_dir=str(tmp_path))
+
+    assert json.loads((state_dir / "tasks.json").read_text(encoding="utf-8")) == tasks
+    assert json.loads((state_dir / "runs.json").read_text(encoding="utf-8")) == runs
+
+
 # --- get / read filtering --------------------------------------------------
 
 

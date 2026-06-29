@@ -30,11 +30,12 @@ whereas an app-only `store-core.ts` `COLLECTION_FILES` noun (the `costEvents`
 pattern) is reachable only by the Express app process. D5 therefore makes
 artifact-chat a `run-management`-style collection. The cross-agent READ ops are
 `read`, `get`, and `transcript` (below) — **any agent may call them**; they never
-mutate.
+mutate. The WRITE ops (`create`, `append_message`, `set_title`, `clear`) are
+called by the **app only**.
 
 ## What this project is
 
-Six UDFs over the App artifact-chat state — three reads and three writes:
+Seven UDFs over the App artifact-chat state — three reads and four writes:
 
 - `read` — `ArtifactChatRecord` rows from `artifactChats.json`, filterable by
   `project` and/or artifact ref. **Cross-agent read.**
@@ -48,6 +49,11 @@ Six UDFs over the App artifact-chat state — three reads and three writes:
 - `append_message` — append one transcript entry AND bump the record's
   `messageCount` + `lastActivityAt`.
 - `set_title` — set the optional human label.
+- `clear` — durably reset a chat: wipe its transcript file AND reset the record
+  (`messageCount=0`, fresh `sessionKey`, `title=null`), keeping the id + ref. So a
+  cleared chat stays cleared after reopen/reload, with a brand-new session.
+  **App-only write** — NOT a cross-agent read; only the app calls it (when the user
+  clears a chat).
 
 Every UDF touches the App files directly with stdlib; no third-party imports in
 UDF logic (the resolver deps in `pyproject.toml` exist only so the `read` UDF can
@@ -230,6 +236,22 @@ set_title(chat_id: str = "", title: str = "") -> dict
 Sets the optional human `title` label on an existing chat; empty string → `null`.
 Returns the updated record. Missing chat → `{"ok": false, "error": "not found"}`.
 
+### clear
+
+```
+clear(chat_id: str = "") -> dict
+```
+
+Durably **resets** a chat so it stays cleared after reopen/reload: deletes the flat
+transcript file `<app_dir>/artifact-chats/<chat_id>.ndjson` (path-confined,
+tolerating a missing file) AND resets the record in `artifactChats.json`
+(whole-document RMW, atomic) — `messageCount=0`, `lastActivityAt=now`, a NEW
+`sessionKey` (fresh agentbridge session, resumes nothing), `title=null` — while
+KEEPING `id`, `project`, `artifactType`, `artifactStem`, `createdAt`. Empty /
+traversal-shaped id, or a missing chat → `{"ok": false, "error": "not found"}` (no
+unlink, no write in that case). **App-only write** — only the app calls it (when the
+user clears a chat). Returns the reset record.
+
 - Writes are **unconditional setters** (like run-management): no state-machine
   validation in the UDF — the app gates legality before calling.
 - UDF logic is stdlib-only; no imports from `openfused.*` (the exec sandbox
@@ -258,7 +280,8 @@ scripts/
 ├── transcript/             # NDJSON snapshot      — cross-agent read
 ├── create/                 # find-or-create (caller-supplied id)
 ├── append_message/         # append human entry + bump counters
-└── set_title/              # optional label
+├── set_title/              # optional label
+└── clear/                  # durable reset — wipe transcript + fresh session (app-only write)
 ```
 
 Source lives in the wheel under `fused/_core/artifact-chat-management/`

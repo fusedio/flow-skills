@@ -1,2 +1,6 @@
 [project]
 name = "secrets-management"
+
+[udfs.list]
+kind = "py"
+cache_max_age = "0s"

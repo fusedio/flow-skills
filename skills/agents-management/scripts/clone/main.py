@@ -470,6 +470,9 @@ def clone(id: str = "", name: str = "", app_dir: str = "", seed_file: str = "") 
         "description": source["description"],
         "adapter": source.get("adapter") or DEFAULT_ADAPTER,
         "model": source.get("model"),
+        # Carry the source's effort (roster loads always include it); without this
+        # a non-default-effort clone would silently reset to DEFAULT_EFFORT on write.
+        "effort": _coerce_effort(source.get("effort")),
         "prompt": source["prompt"],
         "builtin": False,
         "createdAt": _now_iso(),

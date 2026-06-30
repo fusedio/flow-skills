@@ -128,6 +128,25 @@ def test_update_effort_max_round_trips(load_udf, tmp_path, monkeypatch):
     assert _read_one(load_udf, app_dir, created["slug"])["effort"] == "max"
 
 
+def test_clone_preserves_source_effort(load_udf, tmp_path, monkeypatch):
+    # Bugbot: clone built the record field-by-field and dropped effort, so a
+    # non-default-effort clone silently reset to "high" on write.
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    load_udf("create", "create")(
+        name="Helper",
+        title="Helper",
+        role="helper",
+        description="d",
+        prompt="p",
+        effort="low",
+        app_dir=app_dir,
+    )
+    cloned = load_udf("clone", "clone")(id="helper", name="Helper Copy", app_dir=app_dir)
+    assert cloned["effort"] == "low"
+    assert _read_one(load_udf, app_dir, cloned["slug"])["effort"] == "low"
+
+
 def test_seeded_builtin_defaults_effort_high(load_udf, tmp_path, monkeypatch):
     _clean_seed_env(monkeypatch)
     app_dir = str(tmp_path / "app")

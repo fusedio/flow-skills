@@ -41,6 +41,10 @@ AGENT_SCHEMA = "agentcompanies/v1"
 SIDECAR_SCHEMA = "openfused/v1"
 DEFAULT_ADAPTER = "claude_code"
 DEFAULT_MODEL: str | None = None
+# Reasoning effort is a required, non-null enum (unlike model); there is no
+# clear-sentinel — an unknown/blank value coerces to the "high" default.
+DEFAULT_EFFORT = "high"
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
 # The default team that shipped BEFORE the seed ledger existed. Never
 # extend — new defaults are picked up via the ledger, not the baseline.
 PRE_LEDGER_BASELINE_SLUGS = ["data-engineer", "data-analyst", "data-qa"]
@@ -48,6 +52,12 @@ PRE_LEDGER_BASELINE_SLUGS = ["data-engineer", "data-analyst", "data-qa"]
 
 class _RosterError(Exception):
     """A malformed agent file — collected by ``_load_roster`` and skipped."""
+
+
+def _coerce_effort(value: object) -> str:
+    """Coerce any value to a valid effort level; unknown/blank → ``DEFAULT_EFFORT``."""
+    text = value.strip() if isinstance(value, str) else ""
+    return text if text in EFFORT_LEVELS else DEFAULT_EFFORT
 
 
 # --- path resolution ----------------------------------------------------------
@@ -186,6 +196,7 @@ def _parse_agent_file(
         "description": description,
         "adapter": (sidecar_entry or {}).get("adapter", DEFAULT_ADAPTER),
         "model": (sidecar_entry or {}).get("model", DEFAULT_MODEL),
+        "effort": _coerce_effort((sidecar_entry or {}).get("effort")),
         "prompt": body.strip(),
         "builtin": bool((sidecar_entry or {}).get("builtin", False)),
         "createdAt": created_at,
@@ -207,11 +218,22 @@ def _serialize_agent_file(agent: dict) -> tuple[str, dict | None]:
     markdown = f"---\n{front_yaml}\n---\n\n{body}\n"
     adapter = agent.get("adapter") or ""
     model = agent.get("model")
+    effort = _coerce_effort(agent.get("effort"))
     builtin = bool(agent.get("builtin"))
-    is_default = (adapter == DEFAULT_ADAPTER or adapter == "") and model is None and not builtin
+    is_default = (
+        (adapter == DEFAULT_ADAPTER or adapter == "")
+        and model is None
+        and effort == DEFAULT_EFFORT
+        and not builtin
+    )
     if is_default:
         return markdown, None
-    return markdown, {"adapter": adapter or DEFAULT_ADAPTER, "model": model, "builtin": builtin}
+    return markdown, {
+        "adapter": adapter or DEFAULT_ADAPTER,
+        "model": model,
+        "effort": effort,
+        "builtin": builtin,
+    }
 
 
 def _parse_sidecar(yaml_text: str) -> dict:
@@ -228,6 +250,7 @@ def _parse_sidecar(yaml_text: str) -> dict:
             continue
         adapter = DEFAULT_ADAPTER
         model: str | None = DEFAULT_MODEL
+        effort = DEFAULT_EFFORT
         adapter_raw = raw.get("adapter")
         if isinstance(adapter_raw, dict):
             t = adapter_raw.get("type")
@@ -237,7 +260,13 @@ def _parse_sidecar(yaml_text: str) -> dict:
             if isinstance(config, dict):
                 m = config.get("model")
                 model = m if isinstance(m, str) and m.strip() else None
-        out[slug] = {"adapter": adapter, "model": model, "builtin": raw.get("builtin") is True}
+                effort = _coerce_effort(config.get("effort"))
+        out[slug] = {
+            "adapter": adapter,
+            "model": model,
+            "effort": effort,
+            "builtin": raw.get("builtin") is True,
+        }
     return out
 
 
@@ -245,7 +274,12 @@ def _serialize_sidecar(entries: dict) -> str:
     """Serialize ``{slug: entry}`` to a ``.openfused.yaml`` document."""
     agents: dict = {}
     for slug, entry in entries.items():
-        node: dict = {"adapter": {"type": entry["adapter"], "config": {"model": entry["model"]}}}
+        node: dict = {
+            "adapter": {
+                "type": entry["adapter"],
+                "config": {"model": entry["model"], "effort": _coerce_effort(entry.get("effort"))},
+            }
+        }
         if entry["builtin"]:
             node["builtin"] = True
         agents[slug] = node
@@ -361,6 +395,7 @@ def _seed_record(seed: dict) -> dict:
         "description": seed["description"],
         "adapter": seed.get("adapter") or DEFAULT_ADAPTER,
         "model": seed.get("model"),
+        "effort": _coerce_effort(seed.get("effort")),
         "prompt": seed.get("prompt") or "",
         "builtin": True,
     }
@@ -435,6 +470,9 @@ def clone(id: str = "", name: str = "", app_dir: str = "", seed_file: str = "") 
         "description": source["description"],
         "adapter": source.get("adapter") or DEFAULT_ADAPTER,
         "model": source.get("model"),
+        # Carry the source's effort (roster loads always include it); without this
+        # a non-default-effort clone would silently reset to DEFAULT_EFFORT on write.
+        "effort": _coerce_effort(source.get("effort")),
         "prompt": source["prompt"],
         "builtin": False,
         "createdAt": _now_iso(),

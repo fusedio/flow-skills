@@ -1,0 +1,18 @@
+[project]
+name = "artifact-chat-management"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    # Required by the widget resolver (widgets/resolver.py RESOLVER_REQUIREMENTS):
+    # when the local backend runs the resolver with project="artifact-chat-management",
+    # the project venv is the execution interpreter, so the resolver's SQL engine
+    # (duckdb) and its encoders (pandas, pyarrow) must be present here. The `read`
+    # UDF is rendered as a `sql-table` widget (SKILL.md "Rendering"), so this
+    # project carries the same resolver deps as run-management.
+    "duckdb>=1.5.0",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8"]

@@ -1,6 +1,6 @@
 ---
-name: openfused-execute
-description: Best practices for running code through fused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For security scanning, spec checks, and testing see openfused-verify.
+name: fused-execute
+description: Best practices for running code through fused's execute_code tool. Use when writing or reviewing any mcp__openfused__execute_code call — covers how to structure user code, choose a data library, handle results, and write outputs to the file store. For security scanning, spec checks, and testing see fused-verify.
 ---
 
 # Running code via fused
@@ -496,7 +496,7 @@ def double_value(x=0):
 
 ## Verification, expectations, and testing
 
-When verify is enabled on the resolved environment, `execute_code` accepts two quality parameters and may return a `verify` key in its response. The full security model — `verify_code`, the findings table, spec conformance, the audit log, `test_code`, and verify configuration — lives in the **openfused-verify** skill; only the two `execute_code` parameters are covered here.
+When verify is enabled on the resolved environment, `execute_code` accepts two quality parameters and may return a `verify` key in its response. The full security model — `verify_code`, the findings table, spec conformance, the audit log, `test_code`, and verify configuration — lives in the **fused-verify** skill; only the two `execute_code` parameters are covered here.
 
 - **`spec`** — a natural-language description of intent. Claude checks the code against it before execution; a mismatch blocks the call. Required when the environment sets `require_spec`.
 - **`expectations`** — a data-quality contract validated against the return value after execution. Violations are WARN-level and never block.
@@ -519,7 +519,7 @@ Response shapes when verify is active:
 - **Blocked:** `{"blocked": true, "error": "Execution blocked by security policy", "verify": {"findings": [...], "blocked": true}}`
 - **Proceeded with warnings:** `{"return_value": "...", "verify": {"findings": [...], "blocked": false, "summary": {"warn": 2, "block": 0}}}`
 
-To confirm behaviour rather than just safety, run a pytest suite inside the real Lambda with `test_code` — see **openfused-verify**.
+To confirm behaviour rather than just safety, run a pytest suite inside the real Lambda with `test_code` — see **fused-verify**.
 
 ## Execution isolation & tenancy
 
@@ -642,4 +642,4 @@ and have different lifetimes:
   hash key — they are part of the cache, not separate spills.)
 
 These lifecycle rules are provisioned on the cache bucket by `infra_apply`; see
-the openfused-infra skill.
+the fused-infra skill.

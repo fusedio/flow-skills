@@ -1,6 +1,6 @@
 ---
-name: openfused-storage
-description: The fused storage and secrets MCP tools — inspecting cloud-native datasets and managing secrets. Use when finding/listing/counting S3 objects, reading a Parquet/Arrow/CSV schema, minting a download URL, uploading content, or storing/reading/deleting secrets, via mcp__openfused__{list_files,count_files,get_file,get_file_schema,upload_file,get_secret,put_secret,list_secrets,delete_secret}. For running code over the data see openfused-execute; for the equivalent CLI commands see openfused-cli.
+name: fused-storage
+description: The fused storage and secrets MCP tools — inspecting cloud-native datasets and managing secrets. Use when finding/listing/counting S3 objects, reading a Parquet/Arrow/CSV schema, minting a download URL, uploading content, or storing/reading/deleting secrets, via mcp__openfused__{list_files,count_files,get_file,get_file_schema,upload_file,get_secret,put_secret,list_secrets,delete_secret}. For running code over the data see fused-execute; for the equivalent CLI commands see fused-cli.
 ---
 
 # Storage & secrets in fused
@@ -10,7 +10,7 @@ understand its shape, and move bytes in/out — *before* you run code over it wi
 `execute_code`. All are **always-on** MCP tools (no `--enable-infra` /
 `--enable-destructive` flags needed) — except `delete_secret`, which requires
 `--enable-destructive` — and back the same operations as the CLI's
-`files …` / `secrets …` commands (see openfused-cli). They operate on the **active
+`files …` / `secrets …` commands (see fused-cli). They operate on the **active
 environment's** storage backend — real S3 on AWS, the local filesystem on the
 local backend — so the same calls work on either of them.
 
@@ -67,7 +67,7 @@ Write content to object storage.
 
 For large or computed outputs, prefer writing **from inside `execute_code`** (the
 code has direct S3 access via the execution role) rather than round-tripping bytes
-through the MCP boundary — see openfused-execute.
+through the MCP boundary — see fused-execute.
 
 ## Secrets
 
@@ -128,6 +128,6 @@ empty value — that leaves a readable (empty) secret in place.
 - Apart from `delete_secret` (`--enable-destructive`), these tools never gate
   on feature flags; they are available in every server session.
 - For destructive cleanup of cached/spilled result objects use `cache_clear`
-  (covered in openfused-execute), not these tools.
+  (covered in fused-execute), not these tools.
 - CLI equivalents: `fused files list|count|get|schema|upload` and
-  `fused secrets get|put|list|delete` (openfused-cli).
+  `fused secrets get|put|list|delete` (fused-cli).

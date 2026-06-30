@@ -1,5 +1,5 @@
 ---
-name: openfused-feedback
+name: fused-feedback
 description: Show the human a real browser UI — to ask a question, get an approval/decision, or review a plan — built from Fused's JSON-UI primitives and opened with `fused widget open` (one-shot — inline `--config` or a `.json` file) or the parley (`widget push`/`widget watch`, standing). Use in Claude Code whenever a structured choice, form, approval, or plan review would be clearer than plain terminal text, and you want the human's answer back as JSON.
 ---
 
@@ -280,7 +280,7 @@ Everything above is **static** (no environment needed). To put **live data** in
 front of the human (a chart of affected rows, a table of files a migration
 touches), add a data-bound component (`sql-table`, `bar-chart`, a map) whose
 `sql` reads a UDF via `{{ref}}`. That needs a resolved Fused environment and a
-project venv — out of scope here; see the **`openfused-widgets`** skill.
+project venv — out of scope here; see the **`fused-widgets`** skill.
 
 ## <a name="vs-askuserquestion"></a>vs. AskUserQuestion
 

@@ -1,5 +1,5 @@
 ---
-name: openfused-cli
+name: fused-cli
 description: Reference for the fused CLI — environment management, file storage, secrets, code execution, and infrastructure commands. Use when writing or explaining shell commands that invoke `fused`, or when helping users set up, switch between, or provision environments.
 ---
 
@@ -299,7 +299,7 @@ There is no `udf generate` or `project regenerate` command. UDFs are authored by
 3. Validate with `fused code verify <file>` (CLI) or MCP `verify_code` before committing.
 4. Commit `spec.md` + entrypoint together — the pre-commit hook enforces that spec and entrypoint are always paired in the same commit.
 
-See the **openfused-projects** skill for the full spec-first, agent-authored flow (env → project → UDF → run → widget → deploy).
+See the **fused-projects** skill for the full spec-first, agent-authored flow (env → project → UDF → run → widget → deploy).
 
 ### Deploy a project (`project deploy`)
 
@@ -320,7 +320,7 @@ fused project deploy taxi-pipeline --force             # bypass dirty-tree check
 > `--channel release` bypasses the preview gate and breaks the rollback
 > invariant (rollback targets must be prior release events). Use it only for
 > bootstrapping the very first release URL — never for a routine production
-> release, which goes `deploy` (preview) → `promote`. See the `openfused-projects`
+> release, which goes `deploy` (preview) → `promote`. See the `fused-projects`
 > guardrails.
 
 Requires AWS env + `cache_bucket` + provisioned serving plane (`fused infra serve`). Echoes the resolved env name; prints one URL per UDF. Exits 1 if any UDF fails to deploy.
@@ -786,7 +786,7 @@ fused code verify myanalysis.py --project-dir ~/.claude/skills/taxi-pipeline
 
 The flat `<stem>.spec.md` sidecar auto-discovery and `--no-spec` flag are **removed**. Each UDF now carries one `spec.md` in its own folder. Pass `--spec` explicitly when verifying outside a UDF context.
 
-See the **openfused-projects** skill for the spec-first, agent-authored UDF flow.
+See the **fused-projects** skill for the spec-first, agent-authored UDF flow.
 
 ---
 
@@ -1129,7 +1129,7 @@ Author a widget as a JSON tree of `{type, props, children?}` nodes (the root is 
 - **Table**: `sql-table` · **Layout**: `canvas`
 - **Maps**: `map`, `map-bounds`, `fused-map`
 
-Full prop schemas live in the **openfused-widgets** skill's component catalog. **Not implemented — do not author**: `map-h3`, `kepler-map`, `code-editor`, `transformer`, `ai-chat`, `widget-builder`, `pdf-gallery-viewer`. `html` does **not** substitute `{{udf}}`/`$param` (it reads `value` verbatim) — for data on a map, use a map widget, not an HTML/Leaflet hack.
+Full prop schemas live in the **fused-widgets** skill's component catalog. **Not implemented — do not author**: `map-h3`, `kepler-map`, `code-editor`, `transformer`, `ai-chat`, `widget-builder`, `pdf-gallery-viewer`. `html` does **not** substitute `{{udf}}`/`$param` (it reads `value` verbatim) — for data on a map, use a map widget, not an HTML/Leaflet hack.
 
 ### Maps — authoring contracts (read before authoring any map)
 

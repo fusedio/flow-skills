@@ -1,5 +1,5 @@
 ---
-name: openfused-projects
+name: fused-projects
 description: The canonical end-to-end guide for an agent driving Fused — pick an environment, create a project, decompose a task into UDFs, author specs and code, validate + commit, run/preview locally (often as a rendered widget), and deploy through preview to release. Code is authored by the driving agent (no codegen command, no API key); fused supplies validation, the spec↔code pairing hook, and run/deploy. Use to take a user request from prompt to a running, viewable result.
 ---
 
@@ -36,7 +36,7 @@ user request
 ```
 
 The **spec is the only artifact the user reviews**. Most tasks want a **widget**
-back, not raw data — see the **openfused-widgets** skill for the
+back, not raw data — see the **fused-widgets** skill for the
 py-UDF-computes → json-widget-renders pattern.
 
 > ### What's MCP vs what's CLI
@@ -68,7 +68,7 @@ fused env create dev --backend local
 ```
 
 AWS is the production target (deploys UDFs to stable URLs); set it up later via
-the **openfused-setup** skill. **Resolution:** if more than one env exists,
+the **fused-setup** skill. **Resolution:** if more than one env exists,
 nothing is auto-selected — pin the project (`fused project set <project>
 --env dev`) or pass `--env`/`OPENFUSED_ENV`. Verify with
 `get_project_context` (`environment.resolved_env`).
@@ -86,7 +86,7 @@ widget UDF on top**:
 - **`py`** (`scripts/<name>/main.py`) — computation/API; returns a value (usually a
   DataFrame).
 - **`json`** (`scripts/<name>/main.json`) — a JSON-UI **widget** that visualizes a
-  `py` UDF's output via the `{{ref}}` grammar. See **openfused-widgets**.
+  `py` UDF's output via the `{{ref}}` grammar. See **fused-widgets**.
 
 > **Where the widget lives decides where it renders.** The app's project surface
 > live-renders only **saved dashboards** at `widgets/<stem>.json`; a `json` UDF
@@ -94,7 +94,7 @@ widget UDF on top**:
 > So when the goal is "the human views the dashboard in `fused inloop`", author the
 > widget as `widgets/<stem>.json` — not a `json` UDF. Reach for a `json` UDF only
 > when you need a deployable widget URL (preview it with `fused widget open`).
-> See **openfused-widgets** › "What a widget is".
+> See **fused-widgets** › "What a widget is".
 
 Each UDF is one independent capability — lean small. Slugs:
 `^[a-z][a-z0-9]*([-_][a-z0-9]+)*$`, ≤64 chars — `-` and `_` are both accepted as
@@ -234,10 +234,10 @@ def main(threshold: int = 0):
   worker and a served route). A bare top-level `result = <value>` is fine for a
   quick no-param script. **Never both** in one file.
 - A `@fused.udf` UDF works as a widget `{{ref}}` source too (the resolver runs the
-  same form). See **openfused-execute** for libraries/secrets/S3 patterns.
+  same form). See **fused-execute** for libraries/secrets/S3 patterns.
 
 **Widget (`json`):** author `main.json` as a component tree that binds to your
-`py` UDFs with `SELECT … FROM {{udf-name?arg=$param}}`. See **openfused-widgets**
+`py` UDFs with `SELECT … FROM {{udf-name?arg=$param}}`. See **fused-widgets**
 for the config document, the `{{ref}}`/`$param` grammar, and previewing.
 
 ---
@@ -276,7 +276,7 @@ read-only context packet and lists UDFs but does not rewrite the manifest.
 > author into**: archive/restore is an app + human operation, not a CLI step, so never
 > write into `archive/`, treat it as a UDF source, or "restore" by hand-moving files.
 > The one place archived source is still read is the widget resolve fallback (see
-> **openfused-widgets** › archived widgets).
+> **fused-widgets** › archived widgets).
 
 > **Hard-delete a whole project: `fused project delete <name>`.** Distinct from
 > the app's soft-delete `archive/`, this removes the project from the workspace:
@@ -315,7 +315,7 @@ fused code run scripts/taxi-analysis/main.py --project taxi-pipeline
 (`scripts/<name>/main.json`) is *not* live-rendered on the project surface — preview
 it with `widget open scripts/<name>/main.json` or the parley (standing loop). To
 self-verify a widget resolves *headlessly* before showing a human, drive the
-resolve daemon — recipe in **openfused-widgets**.
+resolve daemon — recipe in **fused-widgets**.
 
 > **You open the widget — don't tell the user to** (CLI / standalone flow). After
 > authoring and self-verifying the file, *run* `fused widget open <file>`
@@ -325,7 +325,7 @@ resolve daemon — recipe in **openfused-widgets**.
 > **Exception — an agent spawned by the `fused up` app** (an architect/worker
 > run) must NOT run `widget open`/`up`/the parley (they wait on a human and would
 > hang the run): it writes `widgets/<stem>.json`, the app live-renders it, and it
-> asks for feedback via `ask_user` (the single human-ask tool). See **openfused-widgets** › the
+> asks for feedback via `ask_user` (the single human-ask tool). See **fused-widgets** › the
 > decision tree.
 
 ---
@@ -343,7 +343,7 @@ fused inloop --dev      # vite + tsx watch (source checkout + pnpm/npm)
 ```
 
 Default (bundled) ships inside the wheel — no checkout needed. `--dev` is
-source-only. See **openfused-cli** for the local-servers inventory.
+source-only. See **fused-cli** for the local-servers inventory.
 
 > If `widget open`/`up` errors that an *incompatible app* is running on the port,
 > an older `fused inloop` is occupying it — stop that process and retry.
@@ -426,7 +426,7 @@ A dashboard widget is a `{"type": <component>, "props": {…}}` JSON file in
 matplotlib spec or inline a data array — those are not fused components and
 render as `unknown component: <type>`. The supported set is generated from the
 widgets package (`components.json`, the hard type gate); when unsure, read
-the component catalog in the **openfused-widgets** skill rather than guessing.
+the component catalog in the **fused-widgets** skill rather than guessing.
 
 A chart gets its data from a **`sql` prop** (DuckDB) that reads a UDF via
 `{{udf_name}}` and aliases the result columns to the chart's contract — e.g.
@@ -456,7 +456,7 @@ There is **no codegen MCP tool** — authoring is `Write` + `verify_code` + `git
 
 ## See also
 
-- **openfused-widgets** — authoring + previewing widgets (the usual "result").
-- **openfused-execute** — `execute_code`/`code run` patterns (libraries, S3, secrets).
-- **openfused-setup** — install + AWS env provisioning; launching `fused inloop`.
-- **openfused-cli** — full command/flag reference and the local-servers inventory.
+- **fused-widgets** — authoring + previewing widgets (the usual "result").
+- **fused-execute** — `execute_code`/`code run` patterns (libraries, S3, secrets).
+- **fused-setup** — install + AWS env provisioning; launching `fused inloop`.
+- **fused-cli** — full command/flag reference and the local-servers inventory.

@@ -1,5 +1,5 @@
 ---
-name: openfused-widgets
+name: fused-widgets
 description: Authoring and previewing JSON-UI widgets as the response of running a project — the py-UDF-computes → json-widget-visualizes pattern, the {{ref}}/$param data grammar, how resolution runs through the compute backend, and the CLI/app surfaces (widget open, parley, fused inloop, deployed URL) that put a rendered widget in front of a human. Use whenever the desired output of a UDF/project is a widget, not raw data.
 ---
 
@@ -13,8 +13,8 @@ authoring widgets and getting them in front of a human.
 **There are NO MCP widget tools.** Agents author widget *files*; humans *view*
 them through the CLI (`fused widget open` / the parley) or the app
 (`fused inloop`). Everything below is CLI/app, never MCP. (See
-`openfused-projects` for where this sits in the project lifecycle, and
-`openfused-cli` for the full `widget` command flag tables.)
+`fused-projects` for where this sits in the project lifecycle, and
+`fused-cli` for the full `widget` command flag tables.)
 
 ---
 
@@ -326,7 +326,7 @@ uv sync
 A missing/incomplete `.venv` surfaces a guided error telling you to run
 `uv sync`. (`project new` does **not** create `.venv`.) Best practice: seed the
 venv right after `project new`, not when the first resolve fails — see
-`openfused-projects` Step 2.
+`fused-projects` Step 2.
 
 ---
 
@@ -453,7 +453,7 @@ by the interaction you need:
 - **parley** (`widget push`/`watch`/`parley`/`agent`) is the standing
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details
-  + flags: `openfused-cli` (widget section).
+  + flags: `fused-cli` (widget section).
 - `fused inloop` renders **saved dashboards** (`widgets/<stem>.json`) **natively**
   (no iframe/bundle) with data resolved by the single headless daemon the app
   owns (`fused dev serve` — internal plumbing; you never start it yourself). A
@@ -480,7 +480,7 @@ by the interaction you need:
    it binds) — the same spec↔file pairing UDFs have; the app shows it in the widget's
    Preview ⇄ Spec toggle. Validate py code with `fused code verify <file>` (or
    MCP `verify_code`) before committing. There is no `udf generate` command — the
-   agent authors the file. See `openfused-projects` for the full spec-first flow.
+   agent authors the file. See `fused-projects` for the full spec-first flow.
 3. Local backend: `uv add` the deps the py UDFs (and DuckDB) need, then
    `uv sync`.
 4. Preview — **run the surface command yourself; never hand the human a path to
@@ -502,9 +502,9 @@ by the interaction you need:
 
 ## See also
 
-- `openfused-projects` — the end-to-end lifecycle (env → project → UDF gen →
+- `fused-projects` — the end-to-end lifecycle (env → project → UDF gen →
   run → widget → `fused inloop` → deploy), and the spec-first generation loop.
   Includes the `_core` built-in workspace note.
-- `openfused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
+- `fused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
   `serve`) and the app (`up`); also documents `fused dev serve` which can
   address the built-in `_core` workspace (`workspace="_core"`) with no user setup.

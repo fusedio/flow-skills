@@ -5,3 +5,6 @@ __pycache__/
 
 # uv / virtualenvs
 .venv/
+
+# Claude Code
+.claude/worktrees/

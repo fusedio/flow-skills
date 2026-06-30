@@ -1,6 +1,6 @@
 ---
 name: task-management
-description: Read, create, assign, and re-status tasks in the OpenFused App task store (~/.openfused/app/state.json) through live UDFs, and render the standalone task-board widget. Use when working with OpenFused tasks, the kanban/task board, or the app's task state.
+description: Read, create, assign, and re-status tasks in the Fused App task store (~/.openfused/app/state.json) through live UDFs, and render the standalone task-board widget. Use when working with Fused tasks, the kanban/task board, or the app's task state.
 disable-model-invocation: true
 ---
 
@@ -23,6 +23,11 @@ The split is: **read via SQL** (any query over `{{read}}`, via the `/api/exec/sq
 endpoint), **write via UDF** (any mutation, via the `/api/exec/udf` endpoint).
 Both endpoints are addressed with `?t=<token>&workspace=_core&project=task-management`
 — see the access pattern below.
+
+> **Live reads — never cached.** The read UDFs (`read`, `list_comments`) are pinned
+> `cache_max_age = "0s"` in `openfused.toml`, so every query reflects the current app
+> state rather than a memoized snapshot. Do not override this to a non-zero value —
+> a cached app-state read would serve stale tasks/comments.
 
 ## Access pattern
 

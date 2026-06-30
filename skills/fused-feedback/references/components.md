@@ -6,7 +6,7 @@ prop goes under `props`. An unknown `type` is a hard error. Inputs carry a
 
 These are the components you need for questions / approvals / plan reviews — the
 **static** set (no environment required). The full catalog (charts, tables, maps —
-all data-bound) is in the `openfused-widgets` skill.
+all data-bound) is in the `fused-widgets` skill.
 
 `style` is universal: an inline CSS declaration string merged over the
 component's defaults (e.g. `"display:grid; gap:16px; padding:20px"`).
@@ -161,4 +161,4 @@ component's defaults (e.g. `"display:grid; gap:16px; padding:20px"`).
   button a **distinct `action`** so you can tell which was pressed.
 - A button with neither `action` nor `executor` is inert.
 - (`executor` — running a UDF on press — is a data/act feature that needs a
-  project + environment; not used for static feedback. See `openfused-widgets`.)
+  project + environment; not used for static feedback. See `fused-widgets`.)

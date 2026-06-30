@@ -1,6 +1,6 @@
 ---
 name: agents-management
-description: Create, read, update, delete, clone, and reset entries in the OpenFused App agent roster (~/.openfused/app/agents/). Use when managing the OpenFused agent roster.
+description: Create, read, update, delete, clone, and reset entries in the Fused App agent roster (~/.openfused/app/agents/). Use when managing the Fused agent roster.
 disable-model-invocation: true
 ---
 
@@ -16,7 +16,9 @@ and an agent drives them over the local execution layer started with
 Six UDFs over the global roster directory: one read (`read` — list/get personas)
 and five writes (`create`, `update`, `delete`, `clone`, `reset`). The managed
 entity is the **persistent persona** — slug, name, title, role, description,
-adapter, model, prompt, and a `builtin` provenance flag. Live runs, sessions, and
+adapter, model, prompt, a reasoning-`effort` level (a **required**, non-null enum
+`low|medium|high|xhigh|max`, default `high` — unlike `model`, it is never null),
+and a `builtin` provenance flag. Live runs, sessions, and
 per-agent cost stats are **out of scope** (those live in the app's `state.json`,
 covered by the `task-management` project).
 
@@ -24,6 +26,11 @@ The split is: **read via SQL** (any query over `{{read}}`, via the `/api/exec/sq
 endpoint), **write via UDF** (any mutation, via the `/api/exec/udf` endpoint).
 Both endpoints are addressed with `?t=<token>&workspace=_core&project=agents-management`
 — see the access pattern below.
+
+> **Live reads — never cached.** The `read` UDF is pinned `cache_max_age = "0s"` in
+> `openfused.toml`, so every query reflects the current roster rather than a memoized
+> snapshot. Do not override this to a non-zero value — a cached read would serve a
+> stale roster.
 
 ## Access pattern
 
@@ -75,7 +82,7 @@ via `seed_file`.
 
 - `AGENTS.md` is the portable `agentcompanies/v1` base: frontmatter
   `schema/name/title/slug/role/description`, body = the prompt.
-- `.openfused.yaml` is the OpenFused vendor sidecar: it carries `adapter`, `model`,
+- `.openfused.yaml` is the Fused vendor sidecar: it carries `adapter`, `model`,
   and `builtin` per slug, and is written **only** for a persona with non-default
   fidelity (non-default adapter, a non-null model, or `builtin: true`). A custom
   persona on the adapter default needs no sidecar entry.
@@ -120,18 +127,18 @@ derived id; empty returns all. SQL shorthand: `SELECT * FROM {{read}}`.
 
 ```
 create(name, title, role, description, prompt,   # all required (non-empty)
-       model="", adapter="", slug="") -> dict
+       model="", effort="", adapter="", slug="") -> dict
 ```
 
 Mints a `builtin: false` persona. `slug` defaults to `deriveSlug(name)`; `model`
-empty → null; `adapter` empty → `claude_code`. Rejects an empty required field or
-a slug collision.
+empty → null; `effort` empty (or unknown) → `high`; `adapter` empty → `claude_code`.
+Rejects an empty required field or a slug collision.
 
 ### update
 
 ```
 update(id, name="", title="", role="", description="", prompt="",
-       adapter="", model="") -> dict
+       adapter="", model="", effort="") -> dict
 ```
 
 Patches the resolved persona (by slug or id). **Empty string = leave unchanged**
@@ -155,7 +162,8 @@ clone(id="", name="") -> dict
 ```
 
 Creates a `builtin: false` copy of any persona under a new name (slug derived from
-it) — the edit path for a built-in.
+it) — the edit path for a built-in. **Preserves the source's `effort`** level (and
+`model`/`adapter`) on the copy, rather than resetting to the default.
 
 ### reset
 

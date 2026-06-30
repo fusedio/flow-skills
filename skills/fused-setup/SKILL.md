@@ -1,5 +1,5 @@
 ---
-name: openfused-setup
+name: fused-setup
 description: Step-by-step guide for installing and setting up fused for the first time, including AWS credential checks, detecting an existing installation, provisioning infrastructure, and verifying the setup. Use when a user asks how to install, configure, or get started with openfused.
 ---
 
@@ -188,7 +188,7 @@ The AWS credentials used to provision must have:
 - `s3:HeadBucket`, `s3:CreateBucket`
 - `sts:GetCallerIdentity`
 
-See the `openfused-infra` skill for the complete permissions list.
+See the `fused-infra` skill for the complete permissions list.
 
 ---
 

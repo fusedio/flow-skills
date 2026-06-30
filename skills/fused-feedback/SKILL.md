@@ -1,9 +1,9 @@
 ---
-name: openfused-feedback
-description: Show the human a real browser UI — to ask a question, get an approval/decision, or review a plan — built from OpenFused's JSON-UI primitives and opened with `fused widget open` (one-shot — inline `--config` or a `.json` file) or the parley (`widget push`/`widget watch`, standing). Use in Claude Code whenever a structured choice, form, approval, or plan review would be clearer than plain terminal text, and you want the human's answer back as JSON.
+name: fused-feedback
+description: Show the human a real browser UI — to ask a question, get an approval/decision, or review a plan — built from Fused's JSON-UI primitives and opened with `fused widget open` (one-shot — inline `--config` or a `.json` file) or the parley (`widget push`/`widget watch`, standing). Use in Claude Code whenever a structured choice, form, approval, or plan review would be clearer than plain terminal text, and you want the human's answer back as JSON.
 ---
 
-# OpenFused feedback — ask the human through a visual UI
+# Fused feedback — ask the human through a visual UI
 
 Instead of asking the human a question as terminal text, render a **real browser
 UI** and get a **structured answer back as JSON**. You author a small JSON-UI
@@ -11,7 +11,7 @@ config (a tree of `{type, props, children}` nodes — text, inputs, buttons), op
 it with `fused widget open`, and the command **blocks until the human
 responds**, then prints their answer on stdout.
 
-This is OpenFused's local feedback loop repackaged for
+This is Fused's local feedback loop repackaged for
 **Claude Code**: a visual-planning surface for questions, approvals, and plan
 reviews, in the user's own workspace.
 
@@ -39,7 +39,7 @@ planning page you iterate on).
 
 ## Prerequisites
 
-- The **`fused` CLI** on `PATH`. (Inside an OpenFused source checkout, use
+- The **`fused` CLI** on `PATH`. (Inside an Fused source checkout, use
   `uv run fused …` instead of `fused …`.)
 - **Node 20+** on `PATH`. The first `widget open`/`push` **cold-boots two
   servers** — the Node/Express app *and* a Python `dev serve` daemon (first paint
@@ -252,6 +252,11 @@ human acts; then parse it, author the next view, and `push`. Arm the Monitor
 Monitor(description: "parley human events", persistent: true,
         command: "fused widget watch --port 4477 --from latest")
 ```
+
+`--from` selects the replay start: **`latest`** (default — only events after the
+current `lastSeq`, the usual choice when arming before the first push), **`all`**
+(replay every event from seq 0, e.g. reattaching to an in-progress session), or a
+**numeric `SEQ`** (resume strictly after that sequence number).
 ```bash
 fused widget push /abs/path/plan-v1.json --port 4477   # then: react → push → repeat
 ```
@@ -274,8 +279,8 @@ approval-with-comment, and a multi-field plan review — are in
 Everything above is **static** (no environment needed). To put **live data** in
 front of the human (a chart of affected rows, a table of files a migration
 touches), add a data-bound component (`sql-table`, `bar-chart`, a map) whose
-`sql` reads a UDF via `{{ref}}`. That needs a resolved OpenFused environment and a
-project venv — out of scope here; see the **`openfused-widgets`** skill.
+`sql` reads a UDF via `{{ref}}`. That needs a resolved Fused environment and a
+project venv — out of scope here; see the **`fused-widgets`** skill.
 
 ## <a name="vs-askuserquestion"></a>vs. AskUserQuestion
 

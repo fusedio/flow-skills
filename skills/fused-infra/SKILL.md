@@ -1,5 +1,5 @@
 ---
-name: openfused-infra
+name: fused-infra
 description: Reference for the infrastructure managed by fused — what resources exist, why each one is needed, and when they are created, updated, or deleted. Covers the AWS backend (IAM, Lambda, ECR, S3) and the local backend (data directories + venvs, see "Local backend infra"). Use when helping users understand, provision, or troubleshoot the resources that back an fused environment.
 ---
 

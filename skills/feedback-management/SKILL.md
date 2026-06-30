@@ -1,6 +1,6 @@
 ---
 name: feedback-management
-description: Read AND write interaction cards — the typed, idempotent, resolvable HITL decisions an agent posts into a task thread — in the OpenFused App state store (~/.openfused/app/state.json) through live UDFs. The system of record for interaction cards. Use when working with OpenFused interaction cards, the inbox decision feed, or the app's feedback state.
+description: Read AND write interaction cards — the typed, idempotent, resolvable HITL decisions an agent posts into a task thread — in the Fused App state store (~/.openfused/app/state.json) through live UDFs. The system of record for interaction cards. Use when working with Fused interaction cards, the inbox decision feed, or the app's feedback state.
 disable-model-invocation: true
 ---
 

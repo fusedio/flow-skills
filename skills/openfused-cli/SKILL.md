@@ -218,7 +218,7 @@ fused project new taxi-pipeline
 
 | Argument | Notes |
 |---|---|
-| `NAME` | Project name; must match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, max 64 chars |
+| `NAME` | Project name; must match `^[a-z][a-z0-9]*([-_][a-z0-9]+)*$`, max 64 chars |
 
 ### List projects
 
@@ -249,9 +249,20 @@ fused project show taxi-pipeline
 
 Re-syncs the `openfused.toml` manifest from disk first (structured merge: discovers UDF folders under `scripts/`, rewrites inventory, preserves user-set fields like `description`/`auth`/`cache_max_age` and TOML comments), then prints JSON with keys `name`, `path`, and `udfs`. Exits with an error when the project does not exist.
 
+### Delete a project
+
+```sh
+fused project delete taxi-pipeline
+```
+
+Removes a project from the default workspace: `git rm -rf -- <name>` followed by
+a `--no-verify` commit, then cleans gitignored/untracked residue (`scripts/.venv`,
+`__pycache__`). Rejects `_core` and any underscore-prefixed (reserved) name with a
+`ValueError`. Prints JSON `{name, deleted, root}` on success.
+
 ### Naming rules
 
-Project and UDF names are **lowercase slugs**: `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, max 64 chars. Lowercase-only prevents case-collision bugs on case-insensitive filesystems and in S3 key segments.
+Project and UDF names are **lowercase slugs**: `^[a-z][a-z0-9]*([-_][a-z0-9]+)*$`, max 64 chars. Both `-` and `_` are accepted as segment separators, so snake_case UDF names like `list_comments` are valid. Lowercase-only prevents case-collision bugs on case-insensitive filesystems and in S3 key segments.
 
 ### Workspace layout
 
@@ -1122,7 +1133,7 @@ Full prop schemas live in the **openfused-widgets** skill's component catalog. *
 
 ### Maps — authoring contracts (read before authoring any map)
 
-OpenFused maps render with **MapLibre + deck.gl and NO Mapbox token** (open basemap tiles); geometry comes from SQL. They render in the **native app / `widget open` / parley** only — the deployed-serve bundle shows a placeholder.
+Fused maps render with **MapLibre + deck.gl and NO Mapbox token** (open basemap tiles); geometry comes from SQL. They render in the **native app / `widget open` / parley** only — the deployed-serve bundle shows a placeholder.
 
 - **`map`** — deck.gl, **UDF-layer-bound**: `props.layers: [{udf, visible?, vizConfig?}]` (no flat `sql`). Each `udf` is a UDF (or a `sql-runner` name) returning a **geometry column** of GeoJSON strings (e.g. `'{"type":"Point","coordinates":[' || lng || ',' || lat || ']}' AS geometry`), or set `vizConfig.latColumn`/`lngColumn`. `vizConfig` (FLAT): `geometryColumn`, static `fillColor`/`lineColor`/`pointRadius`/`opacity`, or data-driven `radiusColumn`+`radiusRange` and `colorColumn`+`colorRange`. Plus `mapStyle` (dark/light/satellite/blank), `centerLng`/`centerLat`/`zoom`, `param`+`sendParam`.
 - **`fused-map`** — deck.gl **multi-layer**: `props.layers: [{id, type, sql, ...}]`, `type` ∈ `scatterplot`/`geojson`/`deck-geojson`/`h3`/`heatmap`/`arc`/`mvt`/`raster`. Each layer carries its own `sql`; point layers use `latColumn`/`lngColumn`, `geojson` uses `geometryColumn`, `h3` uses `h3Column` (valid H3 indexes), `arc` needs `sourceLng/sourceLat/targetLng/targetLat` columns, `mvt`/`raster` use `tileUrl`. `style.fillColor`/`lineColor` are `[r,g,b]` / CSS / **data-driven** `{type:"continuous"|"categorical", attr, domain, palette}`. Palettes: Sunset, Viridis, Magma, Plasma, Teal, BluYl, Purp, OrYel, Mint. Plus `tooltip` (bool|string[]), `legend`, `showLegend`/`showLayerPanel`/`showBasemapSwitcher`/`showControls`/`showScale`, `basemap`, `param`+`autoSend`.

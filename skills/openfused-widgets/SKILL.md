@@ -5,7 +5,7 @@ description: Authoring and previewing JSON-UI widgets as the response of running
 
 # Widgets — getting a rendered result back
 
-In most OpenFused flows the thing a human wants back is a **widget** (an
+In most Fused flows the thing a human wants back is a **widget** (an
 interactive dashboard), not a raw value. A widget is a JSON config; running it
 yields *resolved rows that a renderer turns into a visual*. This skill covers
 authoring widgets and getting them in front of a human.
@@ -56,16 +56,20 @@ current components:
 | Layout / display | `div`, `form`, `text`, `markdown`, `diff`, `html`, `image`, `video`, `iframe`, `canvas`, `button`, `metric` |
 | Charts | `bar-chart`, `line-chart`, `scatter-chart`, `donut-chart`, `heatmap-chart`, `stacked-bar-chart`, `stacked-area-chart` |
 | Data | `sql-table` |
-| **Inputs** (write a `$param`) | `dropdown`, `checkbox-group`, `slider`, `number-input`, `text-input`, `text-area`, `datetime-input`, `color-input`, `file-upload`, `camera-input`, `gallery-input`, `video-review` |
+| **Inputs** (write a `$param`) | `dropdown`, `checkbox-group`, `slider`, `number-input`, `text-input`, `text-area`, `datetime-input`, `color-input`, `file-upload`, `camera-input`, `gallery-input` |
+| **Feedback primitives** (Fused-owned; carry intent beyond a scalar value — never SQL-referenced) | `button`, `video-review`, `canvas`, `task-board` |
+| **Source** | `sql-runner` |
 
 Input components carry a `param` prop and a `defaultValue`; they seed the param
 store on first paint and re-resolve dependent queries when the human changes
 them.
 
-> **This is OpenFused, not Fused.** Author widgets ONLY against this catalog.
-> Do **not** use any Fused-branded skill (`fused:*`, e.g. `fused:json-ui-schemas`,
-> `fused:canvas-toml`) or Fused's JSON-UI schema — it carries components OpenFused
-> does not support, and an unsupported `type` is a hard render error. The live,
+> **Use this catalog — not the external Fused-branded skills.** Author widgets
+> ONLY against this catalog (the `agent_core` widget set). Do **not** use any
+> external Fused-branded skill (`fused:*`, e.g. `fused:json-ui-schemas`,
+> `fused:canvas-toml`) or the hosted Fused product's JSON-UI schema — those target
+> a different product and carry components this catalog does not support, and an
+> unsupported `type` is a hard render error. The live,
 > authoritative list for the project you're in is the `widget_components` array in
 > `get_project_context` (`[{type, hasChildren, isInput}, …]`) — orient on it.
 
@@ -100,9 +104,15 @@ Display / data:
 | `html` | `value` (raw HTML — escape hatch; prefer `markdown`) |
 | `iframe` | `src` (absolute http(s)), `title`, `allow` |
 | `div` / `form` | `style` (layout container; `children`) |
-| `map` | `layers` (UDF geometry), `mapStyle` — simple geometry |
-| `fused-map` | `layers` (deck.gl: h3/heatmap/arc/tiles), `showLegend`, `showLayerPanel` — advanced |
-| `map-bounds` | `param` — viewport-as-input only (no data) |
+| `map` | `layers` (UDF geometry), `mapStyle`, `centerLng`, `centerLat`, `zoom`, `param`, `sendParam` — simple geometry |
+| `fused-map` | `layers` (deck.gl: scatterplot/geojson/h3/heatmap/arc/mvt/raster), `basemap`, `centerLng`, `centerLat`, `zoom`, `param`, `showLegend`, `showLayerPanel`, `showBasemapSwitcher` — advanced |
+| `map-bounds` | `param`, `centerLng`, `centerLat`, `zoom`, `mapStyle`, `autoSend`, `buttonLabel` — viewport-as-input only (no data) |
+| `sql-runner` | `name`, `sql` — server-side **source** container (runs a named query once, exposes it to descendants as `{{name}}`); not a rendered output. Renders everywhere (no heavy deps). |
+
+> **Maps render in the native app only.** `map`, `map-bounds`, and `fused-map`
+> need heavy WebGL deps + external tiles the self-contained deployed bundle does
+> not ship, so the deployed build aliases the map modules to a **placeholder** —
+> they render only in the native app (`fused inloop`), not on a deployed URL.
 
 Inputs (write `param`; all take `param`, `label`, `defaultValue`):
 
@@ -221,8 +231,8 @@ for geo data, not an optional extra.
   parley) inject the built-in `_core` shared root by default — so a standalone
   widget (e.g. the task-board's `mutateBackend: "core"`) can drive the built-in
   `_core` UDFs; only the deployed-serve bundle can't.
-  App-parity note: this is an OpenFused-only extension — a cross-project ref won't
-  resolve if pasted into the Fused app.
+  App-parity note: this is an extension specific to this platform (`agent_core`) —
+  a cross-project ref won't resolve if pasted into the external Fused app.
 - `$name` is an **inline text substitution** (not a DuckDB bind param), so it
   works anywhere — including inside `'…'` and `"…"`. Grammar: `$[A-Za-z_]\w*`.
   Substitution is context-aware (quotes are doubled; comments/dollar-quoted
@@ -247,7 +257,7 @@ The `{{ref}}` / `$param` grammar above is the full contract.
 The built-in `_core` workspace ships ready-to-use UDFs that **any ad-hoc widget can
 read or act on directly** via a `{{_core.<project>.<udf>}}` ref (read) or a button
 `executor` firing the same name (write). This is how a user gets a **custom view**
-of OpenFused's own state — a bespoke task board, an inbox triage panel, a run
+of Fused's own state — a bespoke task board, an inbox triage panel, a run
 monitor — without authoring any backing UDF: bind a chart/table straight to a
 core UDF. No setup, no env, no `uv add` for the core source itself — the
 directory-addressed surfaces (`widget open`, parley, `fused dev serve`) inject
@@ -412,7 +422,7 @@ needs the project venv (`duckdb` + the py UDFs' deps; see above).
 > **live-renders it natively** in the Widget tab — no command to run; feedback is
 > asked via the teamwork MCP (`ask_user` — the single human-ask tool), and `data-qa` self-checks a
 > widget headless via `POST /api/exec/widget`. The "run `widget open` yourself" rule
-> is for an agent driving OpenFused from the CLI, not for an in-app worker.
+> is for an agent driving Fused from the CLI, not for an in-app worker.
 
 All four surfaces render the **same config** through the **same resolver**. Pick
 by the interaction you need:

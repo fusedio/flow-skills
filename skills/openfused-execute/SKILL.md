@@ -227,6 +227,8 @@ fused env update prod -p duckdb -p polars
 
 **Local backend:** The `-p/--package` list is **AWS-only** (drives the Docker image build). For the local backend, third-party dependencies belong to a project's `pyproject.toml` (managed with `uv add` inside the project directory). Without a project, execution runs in a bare stdlib-only venv — add the dependency to a project's pyproject.toml and run `uv sync` there.
 
+> **Per-call `requirements` is backend-split.** Only the **local** backend honors a `requirements` list passed on the call (it materializes them into the run venv). On **Lambda/AWS** the container image is prebuilt, so **per-call `requirements` are ignored at execution time** — packages must already be baked into the env image (see AWS backend above). On the realtime/Fused runtime, passing `requirements` raises a clear error. The cache key still incorporates `requirements`, but on Lambda it does not change what is installed.
+
 ## Project venvs on the local backend
 
 When executing against a **local** environment, pass `project=<name>` (MCP) or one of the two CLI selectors to run inside a project's `.venv`.
@@ -447,6 +449,12 @@ The child's `@fused.udf` receives those kwargs via the auto-call mechanism.
 2. `filename` argument to `@fused.udf(filename=...)`
 3. `"user_code.py"` (the current execution's file inside Lambda)
 
+**Per-child caching.** `_openfused.invoke(filename, …, cache_max_age="0s")` takes
+the same `cache_max_age` parameter as `execute_code`. Its default is **`"0s"`**:
+a child caches only when its own `invoke(...)` opts in, **independently of the
+parent's `cache_max_age`** — fanning out under a cached coordinator does not
+implicitly cache the children.
+
 ### Auto-call behaviour
 
 If the code defines a `@fused.udf` function but never assigns to `result`, the **last decorated function is called automatically** after the code block finishes. Arguments are loaded from `_openfused_args.json` in the working directory (populated by `_openfused.invoke()` kwargs) if that file exists; otherwise the UDF is called with no arguments.
@@ -551,7 +559,10 @@ response gains a `result_ref` (`{bucket, key, content_type, length}`):
 **Caching (`cache_max_age`).** Pass a duration (`"90s"`, `"15m"`, `"24h"`,
 `"7d"`) to memoize the result. A later call with the **same code, requirements,
 and inputs** returns the stored value without re-executing — a seconds-long
-Lambda call collapses to a single S3 HEAD. The default `"0s"` disables caching.
+Lambda call collapses to a single S3 HEAD. `execute_code` defaults to `"1h"`
+(ITEM-11856), so repeated calls memoize for an hour unless you override it; pass
+`"0s"` to disable caching for live/non-deterministic code. (`test_code` stays
+opt-in at `"0s"`.)
 
 **When to cache.** Match `cache_max_age` to how often the underlying data changes:
 

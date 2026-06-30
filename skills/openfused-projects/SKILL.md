@@ -1,18 +1,21 @@
 ---
 name: openfused-projects
-description: The canonical end-to-end guide for an agent driving OpenFused — pick an environment, create a project, decompose a task into UDFs, author specs and code, validate + commit, run/preview locally (often as a rendered widget), and deploy through preview to release. Code is authored by the driving agent (no codegen command, no API key); fused supplies validation, the spec↔code pairing hook, and run/deploy. Use to take a user request from prompt to a running, viewable result.
+description: The canonical end-to-end guide for an agent driving Fused — pick an environment, create a project, decompose a task into UDFs, author specs and code, validate + commit, run/preview locally (often as a rendered widget), and deploy through preview to release. Code is authored by the driving agent (no codegen command, no API key); fused supplies validation, the spec↔code pairing hook, and run/deploy. Use to take a user request from prompt to a running, viewable result.
 ---
 
-# Driving OpenFused end-to-end (spec-first, agent-authored)
+# Driving Fused end-to-end (spec-first, agent-authored)
 
-OpenFused organises work as **workspace ⊃ project ⊃ UDF**. You — the driving
-agent — author the specs and the code; OpenFused supplies the scaffold, the
+Fused organises work as **workspace ⊃ project ⊃ UDF**. You — the driving
+agent — author the specs and the code; Fused supplies the scaffold, the
 deterministic validators, a spec↔code consistency hook, and the run/deploy
 machinery. There is **no code-generation command and no API key** in the loop:
 authoring code *is your job*.
 
-> **Built-in `_core` workspace.** OpenFused ships a read-only `_core` workspace
-> inside the wheel (no setup required). Its projects (e.g. `task-management`) are
+> **Built-in `_core` workspace.** Fused provides a read-only `_core` workspace.
+> Its source trees are **no longer bundled in the wheel** — they are cloned at
+> runtime from an external git repo into `~/.openfused/core/`, materializing at
+> `~/.openfused/core/skills/<project>/` (first boot needs `git` + network).
+> Its projects (e.g. `task-management`) are
 > available immediately via `fused dev serve` as
 > `workspace="_core", project="task-management"`. User projects live in the
 > `default` workspace (or any named workspace) — `_core` (and any name starting
@@ -94,7 +97,9 @@ widget UDF on top**:
 > See **openfused-widgets** › "What a widget is".
 
 Each UDF is one independent capability — lean small. Slugs:
-`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`, ≤64 chars (e.g. `sessions`, `dashboard`).
+`^[a-z][a-z0-9]*([-_][a-z0-9]+)*$`, ≤64 chars — `-` and `_` are both accepted as
+segment separators, so snake_case names like `list_comments` are valid
+(e.g. `sessions`, `dashboard`, `list_comments`).
 
 ---
 
@@ -135,7 +140,7 @@ fused project add-dep taxi-pipeline pytest coverage --dev  # only if you'll run 
 ## Step 3 — Write the specs
 
 For each UDF, **write `scripts/<name>/spec.md` yourself** (create the folder if
-needed). OpenFused does not draft specs — you do. A `py` spec:
+needed). Fused does not draft specs — you do. A `py` spec:
 
 ```markdown
 # taxi-analysis
@@ -272,6 +277,12 @@ read-only context packet and lists UDFs but does not rewrite the manifest.
 > write into `archive/`, treat it as a UDF source, or "restore" by hand-moving files.
 > The one place archived source is still read is the widget resolve fallback (see
 > **openfused-widgets** › archived widgets).
+
+> **Hard-delete a whole project: `fused project delete <name>`.** Distinct from
+> the app's soft-delete `archive/`, this removes the project from the workspace:
+> `git rm -rf -- <name>` + a `--no-verify` commit, then cleans gitignored residue
+> (`scripts/.venv`, `__pycache__`). It rejects `_core` and any underscore-prefixed
+> (reserved) name with a `ValueError`, and prints JSON `{name, deleted, root}`.
 
 ---
 

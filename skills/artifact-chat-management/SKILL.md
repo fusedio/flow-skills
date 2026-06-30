@@ -1,6 +1,6 @@
 ---
 name: artifact-chat-management
-description: Read and write the durable per-artifact chat store (records + per-chat NDJSON transcripts) in the OpenFused App store. The cross-agent-visible system of record for artifact chats — the strictly read-only conversation attached to a widget / UDF / reference. Use when inspecting or persisting artifact-chat state, or — from ANY agent — to learn what users have asked about an artifact.
+description: Read and write the durable per-artifact chat store (records + per-chat NDJSON transcripts) in the Fused App store. The cross-agent-visible system of record for artifact chats — the strictly read-only conversation attached to a widget / UDF / reference. Use when inspecting or persisting artifact-chat state, or — from ANY agent — to learn what users have asked about an artifact.
 disable-model-invocation: true
 ---
 

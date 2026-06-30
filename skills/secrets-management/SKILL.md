@@ -1,6 +1,6 @@
 ---
 name: secrets-management
-description: Get, put, list, and delete secrets in the local Fernet-encrypted OpenFused secrets store (~/.openfused/secrets.json). Use when managing OpenFused secrets through live UDFs.
+description: Get, put, list, and delete secrets in the local OS-keychain-backed Fused secrets store (keyed by ~/.openfused/secrets.json as the keychain account; no file is written). Use when managing Fused secrets through live UDFs.
 disable-model-invocation: true
 ---
 
@@ -133,9 +133,10 @@ It is backed by `list`, **never `get`** — the widget shows names only and neve
 puts a cleartext value on the rendered surface. There is no widget seam for the
 write ops (`put`/`delete`); mutate through the UDF endpoint directly.
 
-The config ships **inside the wheel** as a saved widget of this project, at
-`secrets-management/widgets/secrets_table.json`. It materializes alongside the UDFs
-to `~/.openfused/core/secrets-management/widgets/secrets_table.json`, so it is
+The config is part of this `_core` project's source, which is **cloned at runtime
+from the external `_core` git repo** (no longer bundled in the wheel) into
+`~/.openfused/core/`. It materializes alongside the UDFs at
+`~/.openfused/core/secrets-management/widgets/secrets_table.json`, so it is
 available on first run with no authoring step — open it with:
 
 ```bash
@@ -172,7 +173,8 @@ scripts/
 └── delete/ {main.py, spec.md}
 ```
 
-Source lives in the wheel under `fused/_core/secrets-management/` (read-only).
+Source lives in the external `_core` git repo (cloned at runtime to
+`~/.openfused/core/secrets-management/`, read-only) — no longer bundled in the wheel.
 The local-backend venv materializes at
 `~/.openfused/core/secrets-management/scripts/.venv` on first startup. Adding a new op
 = add `scripts/<name>/{main.py,spec.md}`.
@@ -189,6 +191,9 @@ The local-backend venv materializes at
 - `_save` calls `keyring.set_password` directly (no on-disk file write) to stay
   byte-identical to the backend's writer.
 - Two-writer last-write-wins clobber is accepted in this POC (locking is out of scope).
+- The `list` read UDF is pinned `cache_max_age = "0s"` in `openfused.toml`, so the
+  secret inventory is always read live from the keychain — never a memoized snapshot.
+  Do not override this to a non-zero value.
 - Store path resolves from the per-call `secrets_file` param, else `OPENFUSED_SECRETS_FILE`,
   else the default; the keychain service name resolves from the per-call `service` param,
   else `OPENFUSED_KEYRING_SERVICE`, else `"openfused"`.

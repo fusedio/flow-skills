@@ -1,6 +1,6 @@
 ---
 name: run-management
-description: Read and write agent run records (and read per-run transcripts) in the OpenFused App store. The durable system of record for runs. Use when inspecting or persisting OpenFused agent run state — status, costs, prompts, transcripts.
+description: Read and write agent run records (and read per-run transcripts) in the Fused App store. The durable system of record for runs. Use when inspecting or persisting Fused agent run state — status, costs, prompts, transcripts.
 disable-model-invocation: true
 ---
 
@@ -121,6 +121,11 @@ The 13-field camelCase record the `read` UDF returns and the write UDFs produce:
 
 All parameters arrive as strings. Empty string is the zero value for optional
 params; for nullable record fields, empty string → JSON `null`.
+
+> **Live reads — never cached.** The read UDFs (`read`, `transcript`) are pinned
+> `cache_max_age = "0s"` in `openfused.toml`, so every query reflects the current run
+> state rather than a memoized snapshot. Do not override this to a non-zero value —
+> a cached read would serve a stale run record or transcript.
 
 ### read
 

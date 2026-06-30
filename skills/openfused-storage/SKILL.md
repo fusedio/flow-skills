@@ -105,6 +105,12 @@ result = ...  # use conn
 backend secrets live in the OS keychain (one JSON blob per environment, keyed by
 the resolved store path); access control is OS-keychain, not IAM.
 
+> **Linux/WSL has no native keychain.** Where no usable OS keychain exists, every
+> local secret operation **raises a `RuntimeError`** naming both remedies: install
+> the file-based fallback (`pip install keyrings.alt`, which stores secrets
+> *unencrypted* on disk — dev only) or switch to the AWS backend for headless/CI
+> use. Without `keyrings.alt` and without a keychain, secrets simply fail loud.
+
 ### `delete_secret(name)` — gated behind `--enable-destructive`
 
 Unlike the always-on trio above, `delete_secret` is a **destructive** tool: it

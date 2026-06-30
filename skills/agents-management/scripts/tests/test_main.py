@@ -64,3 +64,74 @@ def test_default_roster_when_seed_file_omitted(load_udf, tmp_path, monkeypatch):
     _clean_seed_env(monkeypatch)
     roster = load_udf("read", "read")(app_dir=str(tmp_path / "app"))
     assert {a["slug"] for a in roster} >= DEFAULT_SLUGS
+
+
+# --- effort field -------------------------------------------------------------
+
+
+def _read_one(load_udf, app_dir, slug):
+    return load_udf("read", "read")(slug=slug, app_dir=app_dir)[0]
+
+
+def test_create_defaults_effort_high(load_udf, tmp_path, monkeypatch):
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    record = load_udf("create", "create")(
+        name="Helper", title="Helper", role="helper", description="d", prompt="p", app_dir=app_dir
+    )
+    assert record["effort"] == "high"
+    # A plain custom agent on the default effort writes NO sidecar entry, yet the
+    # reparse must still surface "high" via the coercion default.
+    assert _read_one(load_udf, app_dir, record["slug"])["effort"] == "high"
+
+
+def test_create_effort_low_round_trips(load_udf, tmp_path, monkeypatch):
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    record = load_udf("create", "create")(
+        name="Helper",
+        title="Helper",
+        role="helper",
+        description="d",
+        prompt="p",
+        effort="low",
+        app_dir=app_dir,
+    )
+    assert record["effort"] == "low"
+    # A non-default effort forces a sidecar entry; reading reparses it back to "low".
+    assert _read_one(load_udf, app_dir, record["slug"])["effort"] == "low"
+
+
+def test_create_bogus_effort_coerced_high(load_udf, tmp_path, monkeypatch):
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    record = load_udf("create", "create")(
+        name="Helper",
+        title="Helper",
+        role="helper",
+        description="d",
+        prompt="p",
+        effort="bogus",
+        app_dir=app_dir,
+    )
+    assert record["effort"] == "high"
+
+
+def test_update_effort_max_round_trips(load_udf, tmp_path, monkeypatch):
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    created = load_udf("create", "create")(
+        name="Helper", title="Helper", role="helper", description="d", prompt="p", app_dir=app_dir
+    )
+    updated = load_udf("update", "update")(id=created["slug"], effort="max", app_dir=app_dir)
+    assert updated["effort"] == "max"
+    assert _read_one(load_udf, app_dir, created["slug"])["effort"] == "max"
+
+
+def test_seeded_builtin_defaults_effort_high(load_udf, tmp_path, monkeypatch):
+    _clean_seed_env(monkeypatch)
+    app_dir = str(tmp_path / "app")
+    roster = load_udf("read", "read")(app_dir=app_dir)
+    builtin = next(a for a in roster if a["slug"] == "data-engineer")
+    assert builtin["builtin"] is True
+    assert builtin["effort"] == "high"

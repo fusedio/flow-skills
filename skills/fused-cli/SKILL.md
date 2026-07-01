@@ -1270,10 +1270,12 @@ stdout / exit-code contract:
 
 | Outcome | stdout | Exit |
 |---|---|---|
-| Resolved (incl. per-query failures) | `{"data":{…},"errors":{…},"depMap":{…},"config":{…}}` | `0` |
+| Resolved (incl. per-query failures) | `{"data":{…},"errors":{…},"depMap":{…},"config":{…},"warnings":[…]}` | `0` |
 | Hard failure — bad/missing input, unknown/unresolvable widget, ambiguous env, resolver crash | *no stdout JSON* — message on stderr | non-zero |
 
 **Per-query failures are in-band, not fatal** — a widget whose queries partially fail still resolves and exits `0`, with the failing query IDs under `errors` (empty `{}` when all succeed). This mirrors the render envelope: a partial resolve is a normal, inspectable outcome. Only a *hard* failure (the config never resolves at all) exits non-zero. So the success gate is **`errors` empty and `data` populated** — a zero-row `{{ref}}` is still a success (empty result, clean empty widget), not an error.
+
+**`warnings` is a best-effort advisory, never fatal** — `[{"type","props":[…]}, …]` (empty `[]` when clean) flagging config props the server catalog doesn't recognize (a typo'd or unsupported prop name). It comes from the shared resolve path, so `open`/`push`/`watch` carry it too; it is strictly additive and **never changes the exit code**. It catches catalog-unknown props but not version skew — a prop the server knows that a stale browser bundle doesn't still resolves clean and warns nothing, so it's not a substitute for checking a new prop on the real renderer.
 
 ```sh
 fused widget verify session_cost --project cc-open

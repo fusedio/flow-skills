@@ -328,6 +328,32 @@ A missing/incomplete `.venv` surfaces a guided error telling you to run
 venv right after `project new`, not when the first resolve fails — see
 `fused-projects` Step 2.
 
+### Live dashboards: `refreshInterval` (client-side polling)
+
+A data-bound node can **poll** on its own — set `props.refreshInterval` to an
+interval in **milliseconds** and the renderer re-resolves that source on a timer
+(a `map`/`fused-map` node also accepts a per-layer `refreshInterval` under each
+layer). Use it for live dashboards (a metric or chart that should track changing
+UDF output without a human interaction).
+
+```json
+{ "type": "metric", "props": {
+    "label": "Active runs", "refreshInterval": 5000,
+    "sql": "select count(*) as value from {{_core.run-management.read}} where status = 'started'" } }
+```
+
+- **Floor is 1000 ms.** Sub-floor values are clamped up to 1000 ms; a
+  non-positive / non-finite / non-number value is rejected (no timer scheduled).
+- It's **purely client-side** — timers live in the renderer (the `fused inloop`
+  app and the deployed static bundle). The Python server, planner, and resolver
+  are **unchanged**: a tick is just an ordinary resolve POST for that source's
+  query, the same path a `$param` change takes. Because of that it's **deduped by
+  the cache** — a tick landing inside the source's `cache_max_age` window returns
+  the stored entry with no recompute, so pair a short interval with a short cache
+  age (or `0s`) if you actually want fresh data each tick.
+- `verify` never ticks (it's one-shot), so a `refreshInterval` has no effect on a
+  headless check — confirm live-refresh behavior on the real renderer.
+
 ---
 
 ## Triggering a UDF on a button press (act, not just read)
@@ -390,13 +416,15 @@ fused widget verify scripts/<widget>/main.json \
 # a saved widgets/<stem>.json owned by a project
 fused widget verify <stem> --project <project>
 
-# inline / from stdin; bind $param values; force a fresh run
+# inline / from stdin; bind $param values; force a fresh run (or pin a max age)
 cat main.json | fused widget verify --config -
 fused widget verify <stem> --project <project> --params '{"region":"emea"}' --cache-refresh
+fused widget verify <stem> --project <project> --cache-max-age 0s
 ```
 
 The response is `{"data": {queryId: {columns, rows}}, "errors": {…}, "depMap":
-{…}, "config": {…}}`. **Success = `errors` is empty and `data` has rows.** A
+{…}, "config": {…}, "warnings": […]}`. **Success = `errors` is empty and `data`
+has rows.** A
 per-query failure (bad SQL, a UDF error, a missing `{{ref}}` source, a missing
 `$param`) lands under `errors[queryId]` and never blanks the rest — read it to
 fix the SQL or the referenced UDF; the command **still exits `0`** because
@@ -407,6 +435,13 @@ unknown/unresolvable widget, resolver crash) prints **no stdout JSON**, a messag
 on stderr, and exits **non-zero**. Resolution runs through the project's compute
 backend, so the project venv needs `duckdb` + the py UDFs' deps (see above).
 Full flags + the exit-code table: `fused-cli` (widget section).
+
+The `warnings` array is a **best-effort advisory** — `[{"type","props":[…]}, …]`,
+empty `[]` when clean — flagging config props the server's catalog doesn't
+recognize (a typo'd or unsupported prop name). It is strictly additive and
+**never changes the exit code** (a warning is not an error), and because it comes
+from the shared resolve path the interactive surfaces (`open`/`push`/`watch`)
+carry it too. See the caveat below for what it does and doesn't catch.
 
 ### Pick the right addressing mode
 
@@ -429,15 +464,17 @@ up front:
 > `unknown endpoint`, so confirm the mode first, then the name.
 
 > **⚠ What this proves — and what it does NOT.** A clean `verify` proves the
-> widget's SQL **resolves to data**. It does **not** prove the renderer will
-> **honor your config props** — `verify` returns raw rows and never renders, so
-> a renderer that silently ignores a prop (a stale/old `@fusedio/flow` bundle that
-> predates a prop like `idColumn`/`parentColumn` row-grouping, a typo'd prop name,
-> a component that drops an unknown key) passes this check and still draws wrong.
-> When you add a **newer config prop**, don't trust the headless pass alone:
-> confirm the prop is actually applied on the real renderer (the `fused inloop`
-> app, or the deployed widget URL) and check the renderer version supports it. The
-> headless check is a data gate, not a render gate.
+> widget's SQL **resolves to data**, and its `warnings` array now catches props
+> the **server catalog** doesn't recognize (a typo'd or unsupported prop name).
+> But it still does **not** prove the renderer will **honor** a prop it *does*
+> recognize — `verify` returns raw rows and never renders. The gap it can't see is
+> **version skew**: a prop the server catalog knows but a **stale/old `@fusedio/flow`
+> bundle** doesn't (e.g. `idColumn`/`parentColumn` row-grouping added after that
+> bundle) resolves clean, warns nothing, and still draws wrong. So when you add a
+> **newer config prop**, don't trust the headless pass alone: confirm the prop is
+> actually applied on the real renderer (the `fused inloop` app, or the deployed
+> widget URL) and check the renderer version supports it. The headless check is a
+> data + catalog gate, not a render gate.
 
 ---
 

@@ -525,6 +525,18 @@ by the interaction you need:
 | **The flow UI** (browse **saved dashboards**) — *separate tool, out of scope* | flow | `flow` (or `npx @fusedio/flow` once published) | Human-driven. **Only `widgets/<stem>.json` live-renders** — a `json` UDF shows as source. |
 | **A shareable URL** (stakeholder, no local server) | deploy | `fused udf deploy sales-board --project <p>` | A rendered widget URL (preview → promote to release) |
 
+- **Finding the target (don't `ls` the workspace).** When the human just names a
+  widget and/or project ("open the `session_cost` widget of `cc-open`"), resolve
+  it with the CLI, not by listing directories:
+  - `fused project list` → JSON array of every project (`name`, `path`, `exists`).
+    Skip it when the human already named the project.
+  - `fused project show <project>` → includes a `"widgets": [...]` array of the
+    project's saved-widget **stems** (the `widgets/<stem>.json` you'd pass to
+    `open`), plus its references and components. One call confirms the project
+    **and** lists its widgets — replacing a `ls ~/.openfused/workspaces/…` + `ls
+    widgets/` walk with one structured command. When the human named both the
+    project and an obvious widget, skip discovery entirely and go straight to
+    `fused widget open <stem> --project <project>`.
 - `widget open <target>`: `<target>` is a `.json` path or a saved-widget stem.
   It launches/reuses the app server, opens the browser, and blocks. `--no-open`
   still blocks (prints the URL). This is the canonical "ask the human" path for
@@ -615,11 +627,23 @@ blocked by the harness precisely to push you onto this pattern.
 
 ```sh
 # start open in the background (it blocks for the human); --no-open still prints the URL
-fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open
+fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open 2>open.err &
 # → the URL lands on STDERR as a `widget page: <url>` line (stdout is reserved for the
 #   final terminal-event JSON), so Monitor stderr for `widget page:` (don't sleep-then-cat),
 #   and in parallel run `fused widget verify` to gate the data.
+
+# CAPTURE THE URL AND OPEN THE BROWSER IN ONE STEP — don't split "cat the log" and
+# "open the browser" into two separate tool calls (two model round-trips). Fold them:
+url=$(timeout 30 sh -c 'until u=$(sed -n "s/^widget page: //p" open.err); [ -n "$u" ]; do sleep 0.2; done; echo "$u"')
+cmux open "$url" || open "$url"      # --no-open opens NOTHING; you must open it yourself
 ```
+
+> **`--no-open` + open-it-yourself is only needed in a remote/cmux env** (where the
+> CLI's built-in browser launch can't reach the human's browser). **Locally, drop
+> `--no-open`** and `fused widget open` opens the browser itself — no URL capture,
+> no separate open step. Either way, capturing the URL and opening the browser is
+> **one** action: never spend a round-trip on a standalone `cat`/`Read` of the log
+> just to read the URL, then another to open it.
 
 > Interim vs. end state: this poll is the mitigation until `open` emits the URL
 > as an immediate machine-readable readiness line (`{"url":"…"}`) — at which

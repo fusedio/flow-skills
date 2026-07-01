@@ -267,8 +267,8 @@ a future authoring step; not required for the POC), materializing to
 `~/.openfused/core/artifact-chat-management/widgets/chats_table.json`.
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
-> resolve context, which today means the In-Loop app's dev serve
-> (`fused dev serve` / `fused inloop`).
+> resolve context, which today means the flow app's dev serve
+> (`fused dev serve`).
 
 ## Layout (skill-folder convention)
 

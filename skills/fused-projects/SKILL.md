@@ -31,7 +31,7 @@ user request
       → author main.py / main.json yourself
         → verify_code → git commit (the pairing hook keeps spec+code in sync)
           → run / preview locally (data, or a rendered widget)
-            → view in the app (fused inloop)
+            → view in the flow UI (separate tool)
               → deploy to preview → promote to release (AWS)
 ```
 
@@ -53,7 +53,7 @@ py-UDF-computes → json-widget-renders pattern.
 > | Commit (spec+code together) | `git commit` — the pre-commit hook enforces pairing |
 > | Inspect a project / sync manifest | MCP `project_show` (re-syncs `[udfs.*]` from disk) / CLI `project show` (context packet; lists UDFs but does not rewrite the manifest) |
 > | Run / test code | MCP `execute_code`/`test_code` **or** CLI `code run`/`code test` |
-> | Preview a widget | **CLI/app only** (`widget open`, the parley, `fused inloop`) — no MCP |
+> | Preview a widget | **CLI only** (`widget open`, the parley) — no MCP |
 > | Deploy/promote/rollback | MCP (`--enable-infra`) **or** CLI |
 
 ---
@@ -91,7 +91,7 @@ widget UDF on top**:
 > **Where the widget lives decides where it renders.** The app's project surface
 > live-renders only **saved dashboards** at `widgets/<stem>.json`; a `json` UDF
 > (`scripts/<name>/main.json`) is the **deployable** form and shows as *source* there.
-> So when the goal is "the human views the dashboard in `fused inloop`", author the
+> So when the goal is "the human views the dashboard in the flow UI", author the
 > widget as `widgets/<stem>.json` — not a `json` UDF. Reach for a `json` UDF only
 > when you need a deployable widget URL (preview it with `fused widget open`).
 > See **fused-widgets** › "What a widget is".
@@ -204,7 +204,7 @@ Mirror what the UI does:
 (Step 5). On **`request-changes`** (or any feedback) → edit the specs and re-open a
 fresh review widget; loop until approved. Summarise if multiple UDFs are pending.
 
-> **In-app worker exception.** An agent spawned by the `fused up` app does this
+> **In-app worker exception.** An agent spawned by the flow app does this
 > through the teamwork MCP, not `widget open`: the architect runs the `ask_user`
 > spec-review gate by authoring ONE complete widget (the plan body as `text`, a
 > `diff` node per changed spec file, and the approve/request-changes buttons — no
@@ -326,43 +326,34 @@ fused code run scripts/taxi-analysis/main.py --project taxi-pipeline
 `test_code`/`code test` **requires `--project` on the local backend.**
 
 **Preview a widget** (the result comes back as a rendered widget, not rows). A
-**saved dashboard** (`widgets/<stem>.json`) renders in the app's Widget tab
-(`fused inloop`, Step 8) or via `widget open widgets/<stem>.json`. A **`json` UDF**
-(`scripts/<name>/main.json`) is *not* live-rendered on the project surface — preview
+**saved dashboard** (`widgets/<stem>.json`) renders in the flow UI
+(Step 8) or via `widget open widgets/<stem>.json`. A **`json` UDF**
+(`scripts/<name>/main.json`) is *not* live-rendered on the flow project surface — preview
 it with `widget open scripts/<name>/main.json` or the parley (standing loop). To
 self-verify a widget resolves *headlessly* before showing a human, drive the
 resolve daemon — recipe in **fused-widgets**.
 
-> **You open the widget — don't tell the user to** (CLI / standalone flow). After
+> **You open the widget — don't tell the user to** (CLI / standalone). After
 > authoring and self-verifying the file, *run* `fused widget open <file>`
-> yourself (it launches/reuses the app, opens the browser, and blocks until the
+> yourself (it launches/reuses the widget-host, opens the browser, and blocks until the
 > human responds, returning their reply). Ending your turn with "open it in
-> `fused up`" strands the human — drive the surface and bring back the result.
-> **Exception — an agent spawned by the `fused up` app** (an architect/worker
-> run) must NOT run `widget open`/`up`/the parley (they wait on a human and would
-> hang the run): it writes `widgets/<stem>.json`, the app live-renders it, and it
+> the flow UI" strands the human — drive the surface and bring back the result.
+> **Exception — an agent spawned by the flow app** (an architect/worker
+> run) must NOT run `widget open`/the parley (they wait on a human and would
+> hang the run): it writes `widgets/<stem>.json`, the flow UI live-renders it, and it
 > asks for feedback via `ask_user` (the single human-ask tool). See **fused-widgets** › the
 > decision tree.
 
 ---
 
-## Step 8 — View in the app
+## Step 8 — View in the flow UI (separate tool, out of scope)
 
-`fused inloop` is the local web UI — its **Widget** tab renders a project's **saved
-dashboards** (`widgets/<stem>.json`) natively, and it hosts agent runs. (A `json`
-UDF (`scripts/<name>/main.json`) shows under the UDF drill-in as source, not a
-live render — see Step 7 to preview one.)
-
-```sh
-fused inloop            # bundled app (needs Node 20+); http://127.0.0.1:4400
-fused inloop --dev      # vite + tsx watch (source checkout + pnpm/npm)
-```
-
-Default (bundled) ships inside the wheel — no checkout needed. `--dev` is
-source-only. See **fused-cli** for the local-servers inventory.
-
-> If `widget open`/`up` errors that an *incompatible app* is running on the port,
-> an older `fused inloop` is occupying it — stop that process and retry.
+The local web UI is **flow** — a separate client (`fusedio/flow`), started with the
+`flow` CLI (or `npx @fusedio/flow` once published). Its project surface renders a
+project's **saved dashboards** (`widgets/<stem>.json`) natively and hosts agent runs.
+Driving flow is out of scope here — from the CLI, preview widgets with `fused widget
+open` (Step 7). A `json` UDF (`scripts/<name>/main.json`) shows as source in flow,
+not a live render.
 
 ---
 
@@ -474,5 +465,5 @@ There is **no codegen MCP tool** — authoring is `Write` + `verify_code` + `git
 
 - **fused-widgets** — authoring + previewing widgets (the usual "result").
 - **fused-execute** — `execute_code`/`code run` patterns (libraries, S3, secrets).
-- **fused-setup** — install + AWS env provisioning; launching `fused inloop`.
+- **fused-setup** — install + AWS env provisioning.
 - **fused-cli** — full command/flag reference and the local-servers inventory.

@@ -1,6 +1,6 @@
 ---
 name: fused-widgets
-description: Authoring and previewing JSON-UI widgets as the response of running a project — the py-UDF-computes → json-widget-visualizes pattern, the {{ref}}/$param data grammar, how resolution runs through the compute backend, and the CLI/app surfaces (widget open, parley, fused inloop, deployed URL) that put a rendered widget in front of a human. Use whenever the desired output of a UDF/project is a widget, not raw data.
+description: Authoring and previewing JSON-UI widgets as the response of running a project — the py-UDF-computes → json-widget-visualizes pattern, the {{ref}}/$param data grammar, how resolution runs through the compute backend, and the CLI surfaces (widget open, parley, deployed URL) that put a rendered widget in front of a human. Use whenever the desired output of a UDF/project is a widget, not raw data.
 ---
 
 # Widgets — getting a rendered result back
@@ -11,8 +11,10 @@ yields *resolved rows that a renderer turns into a visual*. This skill covers
 authoring widgets and getting them in front of a human.
 
 **There are NO MCP widget tools.** Agents author widget *files*; humans *view*
-them through the CLI (`fused widget open` / the parley) or the app
-(`fused inloop`). Everything below is CLI/app, never MCP. (See
+them through the CLI (`fused widget open` / the parley). The separate **flow** UI
+(`fusedio/flow` — started with the `flow` CLI, or `npx @fusedio/flow` once
+published) can also render them, but driving flow is **out of scope** for this
+skill; everything below is the `fused` CLI, never MCP. (See
 `fused-projects` for where this sits in the project lifecycle, and
 `fused-cli` for the full `widget` command flag tables.)
 
@@ -25,15 +27,15 @@ A widget is a single JSON document — a tree of nodes, each
 of two places in a project — **and the two render on different surfaces, so the
 choice matters:**
 
-- **`widgets/<stem>.json`** — a **saved project dashboard**. This is the form the
-  app's **project surface live-renders**: in `fused inloop` the project's **Widget**
-  tab lists it and it draws the rendered widget (an **Open ↗** card). **Author here
-  when the human will browse the dashboard in the app.**
+- **`widgets/<stem>.json`** — a **saved project dashboard**, addressed by its
+  **stem** (`fused widget open <stem> --project <p>`). This is also the form the
+  separate **flow** UI live-renders on its project surface (out of scope here).
+  **Use this form when the human will browse the dashboard.**
 - **`scripts/<name>/main.json`** — a **`json`-kind UDF**: a first-class, **deployable**
-  entrypoint (deploys to a stable widget URL). On the project surface it appears as
-  **source** ("View source ↗"), **not** a live render. Preview it rendered with
+  entrypoint (deploys to a stable widget URL). Preview it rendered with
   `fused widget open scripts/<name>/main.json` (the file render path) or by
-  deploying it — **not** by browsing the project in `fused inloop`.
+  deploying it. In the flow UI it appears as **source** ("View source ↗"), **not**
+  a live render.
 
 > The config is identical either way (same `{{ref}}`/`$param` grammar), so this is
 > purely *where the file lives*. The default for "show the human a dashboard" is
@@ -109,10 +111,11 @@ Display / data:
 | `map-bounds` | `param`, `centerLng`, `centerLat`, `zoom`, `mapStyle`, `autoSend`, `buttonLabel` — viewport-as-input only (no data) |
 | `sql-runner` | `name`, `sql` — server-side **source** container (runs a named query once, exposes it to descendants as `{{name}}`); not a rendered output. Renders everywhere (no heavy deps). |
 
-> **Maps render in the native app only.** `map`, `map-bounds`, and `fused-map`
+> **Maps render in the native renderer only.** `map`, `map-bounds`, and `fused-map`
 > need heavy WebGL deps + external tiles the self-contained deployed bundle does
 > not ship, so the deployed build aliases the map modules to a **placeholder** —
-> they render only in the native app (`fused inloop`), not on a deployed URL.
+> they render only in the native renderer (`fused widget open` / the parley / the
+> flow UI), not on a deployed URL.
 
 Inputs (write `param`; all take `param`, `label`, `defaultValue`):
 
@@ -344,8 +347,8 @@ UDF output without a human interaction).
 
 - **Floor is 1000 ms.** Sub-floor values are clamped up to 1000 ms; a
   non-positive / non-finite / non-number value is rejected (no timer scheduled).
-- It's **purely client-side** — timers live in the renderer (the `fused inloop`
-  app and the deployed static bundle). The Python server, planner, and resolver
+- It's **purely client-side** — timers live in the renderer (the widget-host
+  viewer, the flow UI, and the deployed static bundle). The Python server, planner, and resolver
   are **unchanged**: a tick is just an ordinary resolve POST for that source's
   query, the same path a `$param` change takes. Because of that it's **deduped by
   the cache** — a tick landing inside the source's `cache_max_age` window returns
@@ -384,8 +387,8 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
 - It runs through the same compute backend as reads — **so the project venv needs
   the UDF's imports**, same as the read path. Caching is forced off (a write must
   re-run every press).
-- **Surface scope:** works where there is a local host (the `fused inloop` app,
-  `widget open`, parley). On the deployed-serve bundle / MCP-Apps sandbox there is
+- **Surface scope:** works where there is a local host (`widget open`, the
+  parley, the flow UI). On the deployed-serve bundle / MCP-Apps sandbox there is
   no executor, so an `executor` press is a visible no-op (the button still
   renders). Pair `executor` with `action` on the same button to ALSO report a
   feedback event.
@@ -473,8 +476,8 @@ up front:
 > bundle** doesn't (e.g. `idColumn`/`parentColumn` row-grouping added after that
 > bundle) resolves clean, warns nothing, and still draws wrong. So when you add a
 > **newer config prop**, don't trust the headless pass alone: confirm the prop is
-> actually applied on the real renderer (the `fused inloop` app, or the deployed
-> widget URL) and check the renderer version supports it. The headless check is a
+> actually applied on the real renderer (the widget-host viewer via `fused widget
+> open`, the flow UI, or the deployed widget URL) and check the renderer version supports it. The headless check is a
 > data + catalog gate, not a render gate.
 
 > **⚠ Build-freshness: verify sees source, `open` serves a compiled bundle.**
@@ -499,15 +502,15 @@ up front:
 > *you* run the surface command — `fused widget open <file>` for a one-shot, or
 > push it into the parley for a standing loop. `widget open` launches/reuses the app
 > server, opens the browser, and blocks until the human responds, handing you their
-> reply. Never end your turn with "open the file in `fused up` to see it" — that
+> reply. Never end your turn with "open the file in the flow UI to see it" — that
 > strands the human; drive the surface and bring back the result.
 >
-> **⚠ Agents spawned by the `fused up` app (architect / data-analyst / QA
-> worker runs) MUST NOT run `fused widget open` / `widget push` / `fused
-> up`.** Those surfaces wait on a human at a keyboard and would **hang the run** (or
-> collide with the already-running app). In that context the widget flow is
-> different: a `data-analyst` just **writes `widgets/<stem>.json`** and the app
-> **live-renders it natively** in the Widget tab — no command to run; feedback is
+> **⚠ Agents spawned by the flow app (architect / data-analyst / QA
+> worker runs) MUST NOT run `fused widget open` / `widget push` / the parley.**
+> Those surfaces wait on a human at a keyboard and would **hang the run** (or
+> collide with the already-running UI). In that context the widget flow is
+> different: a `data-analyst` just **writes `widgets/<stem>.json`** and the flow UI
+> **live-renders it natively** — no command to run; feedback is
 > asked via the teamwork MCP (`ask_user` — the single human-ask tool), and `data-qa` self-checks a
 > widget headless via `POST /api/exec/widget`. The "run `widget open` yourself" rule
 > is for an agent driving Fused from the CLI, not for an in-app worker.
@@ -517,15 +520,29 @@ by the interaction you need:
 
 | You want… | Use | Command | Response back to the agent |
 |---|---|---|---|
-| **One-shot** feedback ("show this, tell me when done") | `widget open` | `fused widget open scripts/sales-board/main.json` | Blocks until the human submits/closes; prints the final `$param` state as one JSON line to stdout |
-| **A standing loop** (push successive views, stream human events) | **parley** | `widget push <cfg>` + `widget watch` (or `widget agent`) | NDJSON event stream (`action`/`close`); push a new view and keep watching |
-| **The project surface** (browse **saved dashboards** with project data) | the app | `fused inloop` → open the project → **Widget** tab | Human-driven; a feedback task can spawn a follow-up agent run with the human's response. **Only `widgets/<stem>.json` live-renders here** — a `json` UDF shows as source. |
+| **One-shot** feedback ("show this, tell me when done") | `widget open` | `fused widget open scripts/sales-board/main.json` | Blocks until the human submits/closes (or `--timeout`, default 600s); prints the final `$param` state as one JSON line to stdout |
+| **A standing / long-running widget** (push successive views, stream human events) | **parley** | `widget push <cfg>` + `widget watch` (or `widget agent`) | NDJSON event stream (`action`/`close`); the view persists on `/parley`, push a new one and keep watching. See [Long-running / standing widgets](#long-running--standing-widgets). |
+| **The flow UI** (browse **saved dashboards**) — *separate tool, out of scope* | flow | `flow` (or `npx @fusedio/flow` once published) | Human-driven. **Only `widgets/<stem>.json` live-renders** — a `json` UDF shows as source. |
 | **A shareable URL** (stakeholder, no local server) | deploy | `fused udf deploy sales-board --project <p>` | A rendered widget URL (preview → promote to release) |
 
+- **Finding the target (don't `ls` the workspace).** When the human just names a
+  widget and/or project ("open the `session_cost` widget of `cc-open`"), resolve
+  it with the CLI, not by listing directories:
+  - `fused project list` → JSON array of every project (`name`, `path`, `exists`).
+    Skip it when the human already named the project.
+  - `fused project show <project>` → includes a `"widgets": [...]` array of the
+    project's saved-widget **stems** (the `widgets/<stem>.json` you'd pass to
+    `open`), plus its references and components. One call confirms the project
+    **and** lists its widgets — replacing a `ls ~/.openfused/workspaces/…` + `ls
+    widgets/` walk with one structured command. When the human named both the
+    project and an obvious widget, skip discovery entirely and go straight to
+    `fused widget open <stem> --project <project>`.
 - `widget open <target>`: `<target>` is a `.json` path or a saved-widget stem.
   It launches/reuses the app server, opens the browser, and blocks. `--no-open`
   still blocks (prints the URL). This is the canonical "ask the human" path for
-  an agent.
+  an agent. The block is **time-bounded**: `--timeout` seconds (**default 600 =
+  10 min**), after which it prints `{"action":"timeout"}` and exits **3**;
+  `--timeout 0` waits forever (see [Long-running / standing widgets](#long-running--standing-widgets)).
   - **`-c/--config TEXT` (or `--config -` for stdin):** pass the widget config
     **inline** instead of a `<target>` — one call instead of `Write` a `.json`
     then `open` it. Mutually exclusive with `<target>`. Best for **one-shot**
@@ -547,15 +564,44 @@ by the interaction you need:
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details
   + flags: `fused-cli` (widget section).
-- `fused inloop` renders **saved dashboards** (`widgets/<stem>.json`) **natively**
-  (no iframe/bundle) with data resolved by the single headless daemon the app
-  owns (`fused dev serve` — internal plumbing; you never start it yourself). A
-  `json` UDF (`scripts/<name>/main.json`) is **not** live-rendered on the project
-  surface — it appears under the UDF drill-in as source/spec; preview a json UDF
-  with `widget open` (above) or deploy it.
+- **The flow UI** (separate tool, out of scope) renders **saved dashboards**
+  (`widgets/<stem>.json`) natively, with data resolved through `fused dev serve`. A
+  `json` UDF (`scripts/<name>/main.json`) is **not** live-rendered there — it
+  appears as source/spec; preview a `json` UDF with `widget open` (above) or deploy it.
 - **Deployed** `json` UDFs build a self-contained `widget.html` bundle + a gated
   resolver data route → a stable widget URL. This is the one place a renderer
   bundle (not the app) serves the widget.
+
+### Long-running / standing widgets
+
+**Yes — a widget can stay up long-term, but `widget open` is the wrong tool for
+it.** An `open` *session* lives only **as long as its command runs**: the block
+gives up after `--timeout` seconds (**default 600 = 10 min** → `{"action":"timeout"}`,
+exit 3), and on *any* exit (timeout, Ctrl-C, the tab closing) it **de-registers
+the widget** — so you cannot "open it and walk away." Pick by what "long-running"
+means:
+
+- **One long-lived ask that just needs more patience — `widget open --timeout 0`**
+  (wait forever). The block never expires; it returns only when the human acts (or
+  you interrupt). Because it then blocks *indefinitely*, you MUST drive it from
+  `run_in_background` and Monitor its **stderr** for the `widget page:` URL — never
+  a foreground `--timeout 0` you can't get back from (same rule as
+  [Optimistic open + background verify](#optimistic-open--background-verify)).
+- **A widget that genuinely persists across a long session — the parley** (the
+  real long-running surface). Unlike an `open` session, a pushed parley view
+  **persists in the widget-host independently of the short-lived `push` command**:
+  `widget push <cfg>` posts a view and **exits immediately**, the view stays on the
+  standing `/parley` page, and `widget watch` (its `--timeout` defaults to **0 =
+  watch forever**) streams the human's events as NDJSON. Push successive views onto
+  the same page over time; run `watch` in the background for the life of the
+  collaboration. This is the surface to reach for when the widget must outlive a
+  single blocking call.
+
+Either way, the **widget-host itself is a detached background process that
+outlives the CLI call** — it binds a fixed loopback port (default 4410) and a
+later `widget` command *reuses* it — so the host (and any parley view on it) keeps
+serving between commands. What's transient is the per-`open` **session**, not the
+host.
 
 ### Optimistic open + background verify
 
@@ -581,11 +627,23 @@ blocked by the harness precisely to push you onto this pattern.
 
 ```sh
 # start open in the background (it blocks for the human); --no-open still prints the URL
-fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open
+fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open 2>open.err &
 # → the URL lands on STDERR as a `widget page: <url>` line (stdout is reserved for the
 #   final terminal-event JSON), so Monitor stderr for `widget page:` (don't sleep-then-cat),
 #   and in parallel run `fused widget verify` to gate the data.
+
+# CAPTURE THE URL AND OPEN THE BROWSER IN ONE STEP — don't split "cat the log" and
+# "open the browser" into two separate tool calls (two model round-trips). Fold them:
+url=$(timeout 30 sh -c 'until u=$(sed -n "s/^widget page: //p" open.err); [ -n "$u" ]; do sleep 0.2; done; echo "$u"')
+cmux open "$url" || open "$url"      # --no-open opens NOTHING; you must open it yourself
 ```
+
+> **`--no-open` + open-it-yourself is only needed in a remote/cmux env** (where the
+> CLI's built-in browser launch can't reach the human's browser). **Locally, drop
+> `--no-open`** and `fused widget open` opens the browser itself — no URL capture,
+> no separate open step. Either way, capturing the URL and opening the browser is
+> **one** action: never spend a round-trip on a standalone `cat`/`Read` of the log
+> just to read the URL, then another to open it.
 
 > Interim vs. end state: this poll is the mitigation until `open` emits the URL
 > as an immediate machine-readable readiness line (`{"url":"…"}`) — at which
@@ -600,11 +658,11 @@ fused widget open scripts/<name>/main.json --project-dir <project-root> --no-ope
 2. Write each UDF's `spec.md`, get spec approval, then write the entrypoint
    yourself: `scripts/<name>/main.py` for a `py` UDF. For the **widget**, pick the
    home by goal (see "What a widget is"): **`widgets/<stem>.json`** if the human
-   will browse it in `fused inloop` (the only form the project surface
-   live-renders), or **`scripts/<name>/main.json`** if it's a deployable entrypoint
-   (preview via `widget open`, not the project surface). **A `widgets/<stem>.json`
+   will browse it (the form the flow UI live-renders), or
+   **`scripts/<name>/main.json`** if it's a deployable entrypoint
+   (preview via `widget open`). **A `widgets/<stem>.json`
    gets its own `widgets/<stem>.spec.md` sidecar too** (purpose + the data/components
-   it binds) — the same spec↔file pairing UDFs have; the app shows it in the widget's
+   it binds) — the same spec↔file pairing UDFs have; the flow UI shows it in the widget's
    Preview ⇄ Spec toggle. Validate py code with `fused code verify <file>` (or
    MCP `verify_code`) before committing. There is no `udf generate` command — the
    agent authors the file. See `fused-projects` for the full spec-first flow.
@@ -612,16 +670,16 @@ fused widget open scripts/<name>/main.json --project-dir <project-root> --no-ope
    `uv sync`.
 4. Preview — **run the surface command yourself; never hand the human a path to
    open.** A **saved dashboard** (`widgets/<stem>.json`): if the human is already in
-   `fused inloop` it live-renders in the Widget tab, otherwise *you* run `fused
+   the flow UI it live-renders, otherwise *you* run `fused
    widget open widgets/<stem>.json`. A **`json` UDF** (`scripts/<name>/main.json`):
    *you* run `fused widget open scripts/<name>/main.json` (one-shot) or push it
-   into the parley — the project surface in `fused inloop` shows it as **source**,
+   into the parley — the flow UI shows it as **source**,
    not a render. `widget open` blocks until the human responds and returns their
    reply to you. **Open optimistically and run `fused widget verify` in the
    background rather than gating the open on it, and poll for the URL instead of a
    blind `sleep`** — see [Optimistic open + background verify](#optimistic-open--background-verify).
    (This is the **CLI / standalone** path. An **in-app worker** never runs `widget
-   open` — it writes the `.json` and the app live-renders it; see the ⚠ note under
+   open` — it writes the `.json` and the flow UI live-renders it; see the ⚠ note under
    the decision tree.)
 5. Iterate by editing `spec.md` then updating the entrypoint to match (both under
    `scripts/<name>/`); commit both together (the pre-commit hook enforces
@@ -633,8 +691,8 @@ fused widget open scripts/<name>/main.json --project-dir <project-root> --no-ope
 ## See also
 
 - `fused-projects` — the end-to-end lifecycle (env → project → UDF gen →
-  run → widget → `fused inloop` → deploy), and the spec-first generation loop.
+  run → widget → deploy), and the spec-first generation loop.
   Includes the `_core` built-in workspace note.
 - `fused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
-  `verify`) and the app (`up`); also documents `fused dev serve` which can
+  `verify`) and the widget-host; also documents `fused dev serve` which can
   address the built-in `_core` workspace (`workspace="_core"`) with no user setup.

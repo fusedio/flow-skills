@@ -42,7 +42,7 @@ These UDFs own the **durable run record**. The app keeps the **in-memory
 orchestration** that a sandboxed UDF physically cannot perform: spawning /
 killing the agentbridge subprocess, the live SSE buffer
 (`GET /api/runs/:id/events`), and the run queue. So a run's *effects* stay
-app-side while its *record* is owned here. The `fused inloop` app routes its run
+app-side while its *record* is owned here. The flow app routes its run
 reads **and** writes through these UDFs over the shared `dev serve`
 (`createRun`→`create`, `markRunStarted`→`mark_started`, `finishRun`→`finish`,
 `setRunPrompt`→`set_prompt`, boot `recoverOrphans`'s two run sweeps→`fail_started`
@@ -330,8 +330,8 @@ or filter the `SELECT` to taste (`SELECT *` returns every `RunRecord` field, inc
 the nested `usage` object).
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
-> resolve context, which today means the In-Loop app's dev serve
-> (`fused dev serve` / `fused inloop`). The deployed-serve bundle has no
+> resolve context, which today means the flow app's dev serve
+> (`fused dev serve`). The deployed-serve bundle has no
 > `_core` resolve context, so a public URL is not supported for this widget.
 
 ## Layout (skill-folder convention)

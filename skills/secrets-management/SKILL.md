@@ -158,8 +158,8 @@ The shipped config:
 ```
 
 > **Where it resolves.** The `{{_core.*}}` cross-project ref needs an `_core`
-> resolve context, which today means the In-Loop app's dev serve
-> (`fused dev serve` / `fused inloop`). The deployed-serve bundle has no
+> resolve context, which today means the flow app's dev serve
+> (`fused dev serve`). The deployed-serve bundle has no
 > `_core` resolve context, so a public URL is not supported for this widget.
 
 ## Layout (skill-folder convention)

@@ -306,7 +306,7 @@ SQL (`... WHERE project = '<slug>'`).
 > **Where it resolves.** The board needs `_core.*` cross-project refs to resolve.
 > That works on every **local** surface — `fused widget open`
 > / the parley (dev serve's directory-addressed mode injects the built-in `_core`
-> shared root) and the app's dev serve (`fused dev serve` / `fused inloop`).
+> shared root) and the flow UI's dev serve (`fused dev serve`).
 > Only the **deployed-serve** bundle has no `_core` resolve context (no daemon),
 > so the task-board renders "unavailable" there.
 >

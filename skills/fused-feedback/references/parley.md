@@ -128,8 +128,8 @@ push plan-v2.json   ──▶  the same tab re-renders in place, pre-filled
 
 ## Notes
 
-- One parley per app process, in memory — born and dead with the app. The first
-  `push`/`watch` boots the app (loopback `127.0.0.1:4400`) if it isn't running.
+- One parley per widget-host process, in memory — born and dead with the widget-host. The first
+  `push`/`watch` boots the widget-host (loopback `127.0.0.1:4410`) if it isn't running.
 - `push` with `--no-open` never opens the browser; default `--open` opens the
   parley page only when nobody is watching it.
 - The parley protocol is the local `widget open` feedback channel described above.

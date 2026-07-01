@@ -27,7 +27,7 @@ This is the main path from a user request to a running, viewable result.
 2. **`fused-widgets`** — when the desired output is a **widget/dashboard**
    rather than raw data: the py-UDF-computes → json-widget-visualizes pattern,
    the `{{ref}}`/`$param` data grammar, and the surfaces that render it
-   (`fused widget open`, `fused inloop`, deployed URL).
+   (`fused widget open`, the parley, deployed URL).
 3. **`fused-feedback`** — to put a question, approval, or plan-review UI in
    front of the human and get the answer back as JSON (`fused widget open` /
    parley). Use whenever a structured choice beats plain terminal text.

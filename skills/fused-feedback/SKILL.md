@@ -18,7 +18,7 @@ reviews, in the user's own workspace.
 > **CLI vs in-app.** This skill is the **CLI** `widget open`/parley surface — you
 > author a static widget and read the human's submitted `action`/`params`. The
 > separate **in-app** `ask_user(summary, widget, effect)` tool (with its `effect:
-> "reply"` / `effect: "approval_gate"` discriminator) is the In-Loop agent surface.
+> "reply"` / `effect: "approval_gate"` discriminator) is the flow app's agent surface.
 > The `effect` argument does not apply here.
 
 ## When to use this
@@ -168,17 +168,17 @@ tables: **[references/components.md](references/components.md)**.
 ## <a name="make-it-fast"></a>Make it appear instantly
 
 The human's first question is slow **only because the runtime cold-boots two
-servers lazily, while they wait** — the Node app *and* the Python `dev serve`
+servers lazily, while they wait** — the widget-host *and* the Python `dev serve`
 daemon (a few seconds, **up to ~13 s** cold). Once both are up, the resolve is
 **~2 ms** and a warm `widget open` is **~0.4 s** + the browser. So the whole game
-is: **pay the boot before there's a question, and reuse one warm app.** Three
+is: **pay the boot before there's a question, and reuse one warm widget-host.** Three
 moves, in order:
 
-**1 — Pin a port the skill owns.** The default `4400` is *reused if anything
-already answers there* — a foreign/stale app makes your widget 404 (the slow,
+**1 — Pin a port the skill owns.** The default `4410` is *reused if anything
+already answers there* — a foreign/stale widget-host makes your widget 404 (the slow,
 confusing failure). Claim a dedicated port up front and pass it on every command:
 ```bash
-export OPENFUSED_APP_PORT=4477     # then --port 4477 on every open/push/watch
+export OPENFUSED_WIDGET_HOST_PORT=4477     # then --port 4477 on every open/push/watch
 ```
 
 **2 — Warm it in the background, immediately.** The moment a widget looks likely,
@@ -299,23 +299,23 @@ config. Check in this order:
    --reinstall --editable .` from the source checkout, or `pip install -U
    fused`). Inside a source checkout, prefer `uv run fused …`.
 2. **`… did not hand-shake within 30s` / `No such command 'data-serve'` / `Cannot
-   GET /widget-file/…`** — a **stale app build** is being booted (its bundled app
-   code predates the current data daemon). Fix the bundle, not the config: from a
-   source checkout rebuild it (`cd inloop && pnpm build`) or reinstall `fused`
-   from a current source so it ships a fresh `fused/_inloop/dist`.
-3. **A foreign/UI-less app is squatting the port → "Cannot GET /widget-file/…" in
-   the browser.** The app binds one loopback port (default `4400`) and **reuses
+   GET /widget-file/…`** — a **stale widget-host build** is being booted (its bundled
+   viewer code predates the current data daemon). Fix the bundle, not the config: from a
+   source checkout rebuild it (`cd widget-host && pnpm build`) or reinstall `fused`
+   from a current source so it ships a fresh `widget-host/dist`.
+3. **A foreign/stale widget-host is squatting the port → "Cannot GET /widget-file/…" in
+   the browser.** The widget-host binds one loopback port (default `4410`) and **reuses
    whatever already answers there**. If another process (e.g. a stale dev server
-   or a stale build) holds the port, `widget open`
-   reuses it and the browser 404s. The tell: it answers `/api/projects` with `200`
-   but `GET /` or `GET /widget-file/<id>` returns **`Cannot GET`** (no UI bundle).
+   or a stale build) holds the port, a widget command
+   reuses it and the browser 404s. The tell: it answers `/health` with `200`
+   but `GET /widget-file/<id>` returns **`Cannot GET`** (no viewer bundle).
    **Preflight** the port before opening:
    ```bash
-   # 404 here = a bad app is squatting the port; free it or use another
-   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4400/
-   lsof -nP -iTCP:4400 -sTCP:LISTEN     # who holds it
+   # a stale bundle answers /health but 404s the viewer routes; free it or use another
+   curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:4410/health
+   lsof -nP -iTCP:4410 -sTCP:LISTEN     # who holds it
    ```
-   Fix: free the port (`kill <pid>`) so a current app boots, **or** pin a
+   Fix: free the port (`kill <pid>`) so a current widget-host boots, **or** pin a
    dedicated port the skill owns (below). Note: a fresh `--port` *forces a new
    boot*, which also surfaces a stale bundle (item 2) that port-reuse was hiding.
 4. **Verify headlessly** before involving a human — the answer should be a clean
@@ -332,7 +332,7 @@ config. Check in this order:
 - **Only `submit: true` returns control.** A plain button keeps the page open.
 - **`html` does not substitute** `$param`/`{{ref}}` — it renders `value` verbatim.
   For static plan text that's exactly right; for live data use a data-bound node.
-- **The app is loopback-bound** (`127.0.0.1:4400`) and single-user — the human
+- **The widget-host is loopback-bound** (`127.0.0.1:4410`) and single-user — the human
   must be at (or tunneled to) the same machine.
 - **First call cold-boots two servers** (a few seconds, up to ~13 s cold — the
   Node app + the Python `dev serve` daemon); reuse is near-instant. Warm them at

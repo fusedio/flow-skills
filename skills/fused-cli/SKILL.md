@@ -462,31 +462,15 @@ cat data.csv | fused files upload - --bucket my-bucket --key uploads/data.csv
 
 ---
 
-## The app (`up`)
+## The web UI (flow) — separate tool, out of scope
 
-`fused inloop` serves the local web UI (the app): project
-pages, task → agent runs with live transcripts, and the embedded widget board.
-
-```sh
-fused inloop                 # serve the built app at http://127.0.0.1:4400 + open the browser
-fused inloop --port 5000
-fused inloop --dev           # vite + tsx watch (development)
-fused inloop --no-open       # don't open the browser (default: --open)
-```
-
-`--open` (the default) opens the app in the default browser shortly after the
-server starts; `--no-open` suppresses it. Because `up` execs the Node server in
-place, the browser is opened by a small detached helper process spawned just
-before the exec.
-
-The app **ships inside the installed package**, so `pip install fused` is
-enough to run `fused inloop` — no source checkout, no `node_modules`. The only
-runtime requirement is **Node 20+** on PATH. From a source checkout the app is
-served from a local build instead — build once with `pnpm install && pnpm build`
-in `inloop/` (the `@fusedio/agentbridge-*` adapters come from npm, so no sibling
-checkout is needed), or use `--dev` for the vite + tsx watch server (`--dev` is
-source-only). Spawned agents and the widget board use the `fused` CLI —
-`OPENFUSED_BIN` overrides the command (defaults to the entrypoint that ran `up`).
+The local web UI (project pages, task → agent runs with live transcripts, the
+widget board) is **flow** — a **separate client** (`fusedio/flow`), started with
+the `flow` CLI (or `npx @fusedio/flow` once published). It is **not** a `fused`
+subcommand and is **out of scope** for this reference. flow talks to this backend
+over `fused dev serve` and the `_core` UDFs. The `fused` CLI's own human-facing
+widget surfaces are `fused widget open` / the parley on the standalone
+**widget-host** (below) — no full UI needed.
 
 ---
 
@@ -630,7 +614,7 @@ edges, and a `canvas.toml` home. Both commands resolve the
 project the same way as `project show` (explicit `--project` → `OPENFUSED_PROJECT`
 → `openfused.toml` walk-up) and emit the `Pipeline` JSON
 (`{name, path, version, nodes, edges, viewport}`) to stdout. They are the seam the
-`fused inloop` app reads/writes the canvas through; the graph is a **design-time
+flow UI reads/writes the canvas through; the graph is a **design-time
 lens** and never enters the resolve loop.
 
 ```sh
@@ -1145,14 +1129,14 @@ Fused maps render with **MapLibre + deck.gl and NO Mapbox token** (open basemap 
 
 The `widget open`/`push`/`watch`/`parley` commands are served by the
 **widget-host** — a small standalone terminal app (its own Express server + a
-chromeless client SPA), a sibling of the `fused up` control plane, not part of
+chromeless client SPA), a sibling of the separate flow UI, not part of
 it. (This **supersedes** the prior "fold" model, where these commands ran inside
-the `fused up` Express process behind an `appProtocol` handshake; the standalone
+the flow app's Express process behind an `appProtocol` handshake; the standalone
 viewer + parley now live in their own host.) You **do not** start it yourself: each widget
 command **boots-or-reuses** the widget-host transparently.
 
 - **Own port, no state file.** The widget-host binds a fixed loopback port (default
-  **4410**, distinct from the app's 4400; override with `OPENFUSED_WIDGET_HOST_PORT`).
+  **4410**, distinct from the flow UI's port; override with `OPENFUSED_WIDGET_HOST_PORT`).
   Discovery is a **fixed-port `GET /health` probe** — there is no
   `~/.openfused/widget-servers/` state file. The CLI reuses an already-listening
   widget-host (and only when its bundle version matches — a stale or foreign process
@@ -1164,7 +1148,7 @@ command **boots-or-reuses** the widget-host transparently.
   widget-host owns no projects registry; it just views one widget config (+ its
   sibling UDFs) and streams feedback back.
 - **Own `dev serve` child.** The widget-host spawns its **own** headless `fused
-  dev serve` daemon (separate from the one the `fused up` app spawns) and resolves
+  dev serve` daemon (separate from the one the flow app spawns) and resolves
   all widget data through it. `dev serve` resolution is per-request/stateless, so two
   daemons is correct — no shared-daemon coupling, no stale-backend bug. A data-bound
   widget requires a resolved environment with a compute backend (`local` resolves
@@ -1288,7 +1272,7 @@ fused widget verify session_cost --project cc-open
 
 `fused dev serve` is the **single widget-data serving daemon** — it executes
 UDFs, resolves SQL, and resolves widget configs for any project in any workspace.
-The In-Loop app spawns it and manages its lifecycle; it is not a user-facing
+The flow app spawns it and manages its lifecycle; it is not a user-facing
 command in normal use. (The former per-project `widget data-serve` command and its
 `POST /api/widget-data` route were removed; `dev serve` is the one daemon now.)
 

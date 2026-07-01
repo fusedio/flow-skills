@@ -398,9 +398,10 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
 
 ## Self-verify a widget resolves (headless)
 
-Before showing a human, confirm the widget actually resolves to data — there is
-no GUI in the loop and `widget open` blocks for a human. Use **`fused widget
-verify`**: it resolves the widget in **one shot**, prints the data envelope to
+Confirm a widget resolves to data with **`fused widget verify`** — the fast
+headless check (no GUI in the loop). Run it *alongside* `open`, not as a serial
+gate in front of it (see [Optimistic open + background verify](#optimistic-open--background-verify)):
+it resolves the widget in **one shot**, prints the data envelope to
 stdout, and exits — spawning and reaping nothing (no daemon, no port, no token,
 no browser). It reuses the same resolution path as the render surfaces
 in-process, so a clean `verify` faithfully predicts what `open` would render. It
@@ -476,6 +477,19 @@ up front:
 > widget URL) and check the renderer version supports it. The headless check is a
 > data + catalog gate, not a render gate.
 
+> **⚠ Build-freshness: verify sees source, `open` serves a compiled bundle.**
+> `verify` resolves in-process against the source on disk, but `open` serves the
+> **compiled `widget-host` bundle** (`widget-host/dist`). If that bundle is stale
+> — older than its `src/` — `open` can render old/wrong behavior while `verify`
+> stays green, and you'll burn a whole session debugging config that is already
+> correct. So when `open` misbehaves but `verify` is clean, **suspect the running
+> artifact before your config**: confirm the bundle is newer than its source (and
+> actually contains the symbol you're testing), rebuild (`pnpm build` in
+> `widget-host`), and re-open — *before* re-editing the widget. Attribute a render
+> bug to source only once you've confirmed the artifact you're running is fresh.
+> This is the general rule for any compiled surface: verify the thing you're
+> actually running, not the thing you're reading.
+
 ---
 
 ## Getting a widget in front of a human — decision tree
@@ -543,6 +557,40 @@ by the interaction you need:
   resolver data route → a stable widget URL. This is the one place a renderer
   bundle (not the app) serves the widget.
 
+### Optimistic open + background verify
+
+`widget open` **blocks until the human responds**, so you cannot both open a
+widget and do anything else from the same foreground call. Two rules follow — and
+together they kill the blind-`sleep` anti-pattern.
+
+**Open optimistically; verify in the background — don't gate the human's view on
+the headless check.** `verify` is a data + catalog gate, not a render gate, and
+it's fast. Launch `open` first so the human sees the widget the moment the server
+is up, and run `verify` *concurrently* to catch resolve/catalog problems — then
+react (push a fix, flag an empty result) if it comes back dirty. Serialising
+verify → open only adds latency to the human's first paint for a check that
+rarely fails once the SQL is written.
+
+**Poll for readiness — never blind-`sleep`.** Because `open` blocks, start it
+with `run_in_background` and watch its output for the `http://…` URL instead of
+guessing with `sleep 8; cat log`. A fixed sleep is both too slow (you pay the
+worst case every time) and too fragile (a cold server misses the window). Use a
+`Monitor` until-loop that greps the background log for `http://` and returns the
+instant the URL appears, with a timeout ceiling (~30s). Foreground `sleep` is
+blocked by the harness precisely to push you onto this pattern.
+
+```sh
+# start open in the background (it blocks for the human); --no-open still prints the URL
+fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open
+# → the URL lands on STDERR as a `widget page: <url>` line (stdout is reserved for the
+#   final terminal-event JSON), so Monitor stderr for `widget page:` (don't sleep-then-cat),
+#   and in parallel run `fused widget verify` to gate the data.
+```
+
+> Interim vs. end state: this poll is the mitigation until `open` emits the URL
+> as an immediate machine-readable readiness line (`{"url":"…"}`) — at which
+> point waiting collapses to a single read. Until then, poll; never blind-sleep.
+
 ---
 
 ## Authoring checklist for an agent
@@ -569,9 +617,12 @@ by the interaction you need:
    *you* run `fused widget open scripts/<name>/main.json` (one-shot) or push it
    into the parley — the project surface in `fused inloop` shows it as **source**,
    not a render. `widget open` blocks until the human responds and returns their
-   reply to you. (This is the **CLI / standalone** path. An **in-app worker** never
-   runs `widget open` — it writes the `.json` and the app live-renders it; see the
-   ⚠ note under the decision tree.)
+   reply to you. **Open optimistically and run `fused widget verify` in the
+   background rather than gating the open on it, and poll for the URL instead of a
+   blind `sleep`** — see [Optimistic open + background verify](#optimistic-open--background-verify).
+   (This is the **CLI / standalone** path. An **in-app worker** never runs `widget
+   open` — it writes the `.json` and the app live-renders it; see the ⚠ note under
+   the decision tree.)
 5. Iterate by editing `spec.md` then updating the entrypoint to match (both under
    `scripts/<name>/`); commit both together (the pre-commit hook enforces
    spec+entrypoint pairing); re-open to re-preview.

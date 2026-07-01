@@ -503,9 +503,14 @@ by the interaction you need:
     counterpart (no temp file; `--source PATH` sets the edit anchor).
   - **`--project-dir PATH`** (only for `.json` file targets): pins `fused dev
     serve`'s `?projectDir=` mode to a project directory so UDFs in `scripts/` and the project
-    `.venv` are available. Use this when the widget file sits outside the project
-    tree but needs that project's UDFs/environment. Mutually exclusive with
-    `--project`.
+    `.venv` are available. **Pass this for almost any real project widget** — one
+    that references a UDF elsewhere in `scripts/` or a `{{_core.*}}` ref. Omitting
+    it leaves `open` in widget-dir (`?dir=`) mode, which sees **only** the `.py`
+    files sitting next to the widget file; a `{{ref}}` to anything else then fails
+    (often a misleading `unknown endpoint`/ValueError). Being *inside* the project
+    tree is **not** enough — the mode is set by this flag, not by file location
+    (see [First: pick the right addressing mode](#first-pick-the-right-addressing-mode-dir-vs-projectdir)).
+    Mutually exclusive with `--project`.
 - **parley** (`widget push`/`watch`/`parley`/`agent`) is the standing
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details

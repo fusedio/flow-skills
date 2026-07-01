@@ -1239,6 +1239,47 @@ By default `watch` emits only **`action`** and **`close`** events — the low-vo
 
 A `close` event is a presence signal, not an ending — the human left the tab; the parley continues; reopening the page resumes reporting.
 
+### Verify a widget resolves, headless (`widget verify`)
+
+The CI/agent counterpart of `open`/`push`/`watch`: resolves a widget **in one shot** and prints its data envelope to stdout — no browser, no session, no daemon, no port, nothing left running. It answers one question — *does this config resolve, and to what data?* — and exits. It reuses the same `POST /api/exec/widget` resolution path in-process, so a `verify` result faithfully predicts what `open` would render.
+
+Use it instead of hand-driving `fused dev serve` (the old spawn → read-handshake → POST → parse → kill dance) whenever you just need to confirm a widget resolves before showing a human.
+
+```sh
+fused widget verify session_cost --project cc-open   # a saved-widget stem
+fused widget verify ./draft.json                     # a .json config file
+fused widget verify ./draft.json --project-dir ~/.openfused/workspaces/default/cc-open
+cat draft.json | fused widget verify --config -      # inline config from stdin
+fused widget verify sales_overview --params '{"region":"emea"}' --cache-refresh
+```
+
+`TARGET` mirrors `widget open` — exactly one of a saved-widget stem, a `.json` config file, or an inline `-c/--config` (`--config -` reads stdin); a stem needs `--project` (or a resolved ambient project). `--config` and `TARGET` are mutually exclusive.
+
+| Option | Default | Notes |
+|---|---|---|
+| `-c/--config TEXT` | — | Inline JSON config instead of a TARGET; `-` reads stdin. Mutually exclusive with TARGET. |
+| `--project NAME` | — | Project owning a saved-widget stem TARGET (default: resolved project). Mutually exclusive with `--project-dir`. |
+| `--project-dir PATH` | — | Pin resolution to a project dir (local backend only). **Only valid for `.json`/`--config` targets** (not a stem), drives `fused dev serve`'s `?projectDir=` mode (UDFs from `<PATH>/scripts/`, run under `<PATH>/scripts/.venv`). Mutually exclusive with `--project`. |
+| `--params JSON` | — | JSON object of `$param` values to bind before resolving (the values a browser would post on interaction). |
+| `--cache-refresh` | off | Ignore cached UDF results — force a fresh run. |
+| `--cache-max-age AGE` | engine `1h` | Max cached-result age (e.g. `0s`, `1h`). |
+
+**Addressing** follows `widget open`: a `.json`/`--config` target with neither flag resolves **project-less** via `?dir=` mode, rooted at the `.json` file's own directory (its cwd for an inline `--config`), so `{{ref}}`s to sibling `<dir>/udfs/*.py` resolve — but sibling flat `*.py` are *not* auto-injected (deferred), so a widget depending on inline sibling bodies rather than `<dir>/udfs/` may under-resolve. For a real project widget (a `{{ref}}` elsewhere in `scripts/`, or a `{{_core.*}}` ref), pass `--project` (stem) or `--project-dir` (`.json`).
+
+stdout / exit-code contract:
+
+| Outcome | stdout | Exit |
+|---|---|---|
+| Resolved (incl. per-query failures) | `{"data":{…},"errors":{…},"depMap":{…},"config":{…}}` | `0` |
+| Hard failure — bad/missing input, unknown/unresolvable widget, ambiguous env, resolver crash | *no stdout JSON* — message on stderr | non-zero |
+
+**Per-query failures are in-band, not fatal** — a widget whose queries partially fail still resolves and exits `0`, with the failing query IDs under `errors` (empty `{}` when all succeed). This mirrors the render envelope: a partial resolve is a normal, inspectable outcome. Only a *hard* failure (the config never resolves at all) exits non-zero. So the success gate is **`errors` empty and `data` populated** — a zero-row `{{ref}}` is still a success (empty result, clean empty widget), not an error.
+
+```sh
+fused widget verify session_cost --project cc-open
+# exit 0, errors {}, 7 queries resolved
+```
+
 ### Headless resolve daemon (`fused dev serve`)
 
 `fused dev serve` is the **single widget-data serving daemon** — it executes

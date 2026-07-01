@@ -373,78 +373,64 @@ The flow above is **read** — data flows UDF → rows → widget. A `button` ca
 ## Self-verify a widget resolves (headless)
 
 Before showing a human, confirm the widget actually resolves to data — there is
-no GUI in the loop and `widget open` blocks for a human. Drive the resolve daemon
-the app uses (`fused dev serve`) directly: it prints one handshake line
-(`{origin, port, token, pid}`), then serves the token-gated
-`POST /api/exec/widget`.
-
-### First: pick the right addressing mode (`?dir=` vs `?projectDir=`)
-
-The daemon resolves `{{ref}}` sources in one of two modes, set by the query
-param you pass on the POST. **Picking the wrong one is the most common failure
-here** — and it surfaces as a misleading `unknown endpoint` error, not as
-"wrong mode", so know the rule up front:
-
-| Mode | Param | What it can resolve | Use when |
-|---|---|---|---|
-| **Widget-dir** | `?dir=<abs widget dir>` | Only the `*.py` sitting **next to** the widget file (passed as inline `sources`). **Cannot** see other UDFs in the project's `scripts/`, and **cannot** resolve `{{_core.*}}` or any `{{ref}}` whose UDF lives elsewhere. | The widget is self-contained — every `{{ref}}` it names has a sibling `.py` in the same folder. |
-| **Project** | `?projectDir=<abs project root>` | The whole project: every `scripts/<name>/main.py`, the project `.venv`, and the injected built-in `_core` workspace (so `{{_core.task-management.read}}` etc. resolve). | The widget reads a UDF elsewhere in `scripts/`, a `{{_core.*}}` ref, or a deployable `scripts/<name>/main.json` — i.e. almost any real project widget. **This is the default.** |
-
-> **`unknown endpoint` ⇒ wrong mode (90% of the time).** If a `{{ref}}` resolves
-> to `unknown endpoint`, you are almost certainly in `?dir=` mode addressing a UDF
-> the widget-dir can't see. Switch to `?projectDir=<project root>` before
-> suspecting the SQL or the UDF itself. (`?dir=` genuinely only sees siblings — it
-> is **not** a project view.) The reverse — a truly missing/misnamed `{{ref}}` —
-> also reads `unknown endpoint`, so confirm the mode first, then the name.
-
-### The headless verify recipe (hardened)
-
-Run this as one block. It cleans up the daemon on **any** exit (`trap`), fails
-loud if the daemon dies before handshake (instead of hanging or POSTing to a
-dead port), and uses an **absolute** project root so cwd resets don't matter:
+no GUI in the loop and `widget open` blocks for a human. Use **`fused widget
+verify`**: it resolves the widget in **one shot**, prints the data envelope to
+stdout, and exits — spawning and reaping nothing (no daemon, no port, no token,
+no browser). It reuses the same resolution path as the render surfaces
+in-process, so a clean `verify` faithfully predicts what `open` would render. It
+is the headless counterpart of `open`/`push`/`watch` and **replaces** the old
+hand-driven `fused dev serve` dance (spawn → read handshake → POST
+`/api/exec/widget` → parse → kill).
 
 ```sh
-# --- choose ONE addressing line ---
-PROJECT=~/.openfused/workspaces/default/<project>          # project mode (default)
-WIDGET=$PROJECT/scripts/<widget>/main.json                  # the widget config to verify
-MODE="projectDir=$PROJECT"                                  # ← project mode
-# MODE="dir=$PROJECT/scripts/<widget>"                      # ← widget-dir mode (siblings only)
+# a .json config file, pinned to its project (the usual real-widget case)
+fused widget verify scripts/<widget>/main.json \
+  --project-dir ~/.openfused/workspaces/default/<project>
 
-set -e
-OUT=$(mktemp); ERR=$(mktemp)
-fused dev serve --timeout 60 >"$OUT" 2>"$ERR" &
-DS_PID=$!
-trap 'kill "$DS_PID" 2>/dev/null; rm -f "$OUT" "$ERR"' EXIT   # always reap the daemon + temp files
+# a saved widgets/<stem>.json owned by a project
+fused widget verify <stem> --project <project>
 
-# wait for the handshake line (up to ~10s); bail loudly if the daemon died
-for _ in $(seq 1 50); do
-  [ -s "$OUT" ] && break
-  kill -0 "$DS_PID" 2>/dev/null || { echo "dev serve died before handshake:"; cat "$ERR"; exit 1; }
-  sleep 0.2
-done
-[ -s "$OUT" ] || { echo "no handshake from dev serve after 10s:"; cat "$ERR"; exit 1; }
-
-read ORIGIN TOKEN < <(python3 -c 'import json;h=json.load(open("'"$OUT"'"));print(h["origin"],h["token"])')
-
-# POST the widget config; the body is {"config": <the main.json contents>}
-curl -s -X POST "$ORIGIN/api/exec/widget?t=$TOKEN&$MODE" -H 'Content-Type: application/json' \
-  -d "$(python3 -c 'import json;print(json.dumps({"config":json.load(open("'"$WIDGET"'"))}))')"
-# trap fires here → daemon is killed, temp files removed
+# inline / from stdin; bind $param values; force a fresh run
+cat main.json | fused widget verify --config -
+fused widget verify <stem> --project <project> --params '{"region":"emea"}' --cache-refresh
 ```
 
-The response is `{"data": {queryId: {columns, rows}}, "errors": {…}, …}`. **Success
-= `errors` is empty and `data` has rows.** A per-query failure (bad SQL, a UDF
-error, a missing `{{ref}}` source, a missing `$param`) appears under
-`errors[queryId]` and never blanks the rest — read it to fix the SQL or the
-referenced UDF. A source that returns `[]` (zero rows) is a **success**, not an
-error: it lands in `data` as an empty result (`{columns: [], rows: []}`) and the
-widget renders empty — so a zero-row dataset is a clean empty widget, not an
-in-card error. The daemon resolves through the project's compute backend, so it
-needs the project venv (`duckdb` + the py UDFs' deps; see above).
+The response is `{"data": {queryId: {columns, rows}}, "errors": {…}, "depMap":
+{…}, "config": {…}}`. **Success = `errors` is empty and `data` has rows.** A
+per-query failure (bad SQL, a UDF error, a missing `{{ref}}` source, a missing
+`$param`) lands under `errors[queryId]` and never blanks the rest — read it to
+fix the SQL or the referenced UDF; the command **still exits `0`** because
+per-query failures are *in-band*. A source that returns `[]` (zero rows) is a
+**success**, not an error: it's an empty result and the widget renders empty — a
+clean empty widget, not an in-card error. Only a **hard** failure (bad input,
+unknown/unresolvable widget, resolver crash) prints **no stdout JSON**, a message
+on stderr, and exits **non-zero**. Resolution runs through the project's compute
+backend, so the project venv needs `duckdb` + the py UDFs' deps (see above).
+Full flags + the exit-code table: `fused-cli` (widget section).
 
-> **⚠ What this proves — and what it does NOT.** A clean headless pass proves the
+### Pick the right addressing mode
+
+`verify` resolves `{{ref}}` sources in one of two modes, chosen by the flag you
+pass. **Picking the wrong one is the most common failure here** — and it surfaces
+as a misleading `unknown endpoint` error, not as "wrong mode", so know the rule
+up front:
+
+| Mode | How to select | What it can resolve | Use when |
+|---|---|---|---|
+| **Widget-dir** | a bare `.json`/`--config` with **no** `--project`/`--project-dir` (`?dir=`) | Only the `*.py` under the widget file's own `<dir>/udfs/`. **Cannot** see other UDFs in the project's `scripts/`, and **cannot** resolve `{{_core.*}}` or any `{{ref}}` whose UDF lives elsewhere. | The widget is self-contained — every `{{ref}}` resolves from its own `udfs/` folder. |
+| **Project** | `--project-dir <abs project root>` (a `.json`/`--config`) or `--project <name>` (a stem) | The whole project: every `scripts/<name>/main.py`, the project `.venv`, and the injected built-in `_core` workspace (so `{{_core.task-management.read}}` etc. resolve). | The widget reads a UDF elsewhere in `scripts/`, a `{{_core.*}}` ref, or is a deployable `scripts/<name>/main.json` — i.e. almost any real project widget. **This is the default.** |
+
+> **`unknown endpoint` ⇒ wrong mode (90% of the time).** If a `{{ref}}` resolves
+> to `unknown endpoint`, you almost certainly ran a bare `.json` (widget-dir mode)
+> against a UDF that folder can't see. Add `--project-dir <project root>` (or
+> `--project <name>` for a stem) before suspecting the SQL or the UDF itself.
+> Being *inside* the project tree is **not** enough — the mode is set by the flag,
+> not by cwd. The reverse — a truly missing/misnamed `{{ref}}` — also reads
+> `unknown endpoint`, so confirm the mode first, then the name.
+
+> **⚠ What this proves — and what it does NOT.** A clean `verify` proves the
 > widget's SQL **resolves to data**. It does **not** prove the renderer will
-> **honor your config props** — the daemon returns raw rows and never renders, so
+> **honor your config props** — `verify` returns raw rows and never renders, so
 > a renderer that silently ignores a prop (a stale/old `@fusedio/flow` bundle that
 > predates a prop like `idColumn`/`parentColumn` row-grouping, a typo'd prop name,
 > a component that drops an unknown key) passes this check and still draws wrong.
@@ -452,11 +438,6 @@ needs the project venv (`duckdb` + the py UDFs' deps; see above).
 > confirm the prop is actually applied on the real renderer (the `fused inloop`
 > app, or the deployed widget URL) and check the renderer version supports it. The
 > headless check is a data gate, not a render gate.
-
-> `fused dev serve` is normally internal plumbing the app spawns — driving it
-> directly (with the cleanup above) is the supported way for an **agent** to
-> self-check a widget headlessly. There is no first-class `fused widget run`
-> command yet, so this recipe is the contract until one lands.
 
 ---
 
@@ -509,7 +490,7 @@ by the interaction you need:
     files sitting next to the widget file; a `{{ref}}` to anything else then fails
     (often a misleading `unknown endpoint`/ValueError). Being *inside* the project
     tree is **not** enough — the mode is set by this flag, not by file location
-    (see [First: pick the right addressing mode](#first-pick-the-right-addressing-mode-dir-vs-projectdir)).
+    (see [Pick the right addressing mode](#pick-the-right-addressing-mode)).
     Mutually exclusive with `--project`.
 - **parley** (`widget push`/`watch`/`parley`/`agent`) is the standing
   agent↔human channel — successive views land on one persistent page and the
@@ -567,5 +548,5 @@ by the interaction you need:
   run → widget → `fused inloop` → deploy), and the spec-first generation loop.
   Includes the `_core` built-in workspace note.
 - `fused-cli` — full `widget` command flags (`open`/`push`/`watch`/`parley`/
-  `serve`) and the app (`up`); also documents `fused dev serve` which can
+  `verify`) and the app (`up`); also documents `fused dev serve` which can
   address the built-in `_core` workspace (`workspace="_core"`) with no user setup.

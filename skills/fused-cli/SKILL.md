@@ -1215,7 +1215,7 @@ Default-mode stdout/exit contract:
 
 A page **refresh counts as a close** (the browser fires the same event); a crashed browser sends nothing and the command ends at the timeout.
 
-**Driving it from an agent (open optimistically, poll — never blind-`sleep`).** Because the command blocks until the human settles, an agent that needs the URL should start it with `run_in_background` and read the `http://…` line off **stderr** (`--no-open` prints it there), then `Monitor` until it appears with a timeout ceiling — do **not** `sleep N; cat`. Run `fused widget verify` **concurrently** rather than serialising verify → open; the open is optimistic and the headless check gates the data in parallel. See `fused-widgets` → *Optimistic open + background verify* for the full rationale.
+**Driving it from an agent (open optimistically, poll — never blind-`sleep`).** Because the command blocks until the human settles, an agent that needs the URL should start it with `run_in_background` and read the URL off **stderr** — it prints as a `widget page: <url>` line there (stdout is reserved for the final terminal-event JSON), so `Monitor` stderr for `widget page:` until it appears with a timeout ceiling — do **not** `sleep N; cat`. Run `fused widget verify` **concurrently** rather than serialising verify → open; the open is optimistic and the headless check gates the data in parallel. See `fused-widgets` → *Optimistic open + background verify* for the full rationale.
 
 ### The parley — a standing channel (`widget push` / `widget watch` / `widget parley`)
 

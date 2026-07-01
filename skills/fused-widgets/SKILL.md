@@ -582,7 +582,8 @@ blocked by the harness precisely to push you onto this pattern.
 ```sh
 # start open in the background (it blocks for the human); --no-open still prints the URL
 fused widget open scripts/<name>/main.json --project-dir <project-root> --no-open
-# → then Monitor its output until an `http://…` line appears (don't sleep-then-cat),
+# → the URL lands on STDERR as a `widget page: <url>` line (stdout is reserved for the
+#   final terminal-event JSON), so Monitor stderr for `widget page:` (don't sleep-then-cat),
 #   and in parallel run `fused widget verify` to gate the data.
 ```
 

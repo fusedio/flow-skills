@@ -278,6 +278,22 @@ read-only context packet and lists UDFs but does not rewrite the manifest.
 > The one place archived source is still read is the widget resolve fallback (see
 > **fused-widgets** › archived widgets).
 
+> **`work-products.json` — the app-owned provenance manifest, read-only to you.**
+> A project created/managed in the app carries a **`work-products.json` at the
+> project root** (beside `openfused.toml`, **git-tracked**, one per project). It is
+> the app/shell's record of each artifact (widget / UDF / reference): its `status`
+> (draft/active/archived), `reviewState`, whether it's `isPrimary`, a `summary`, a
+> `version` (`sha256:` of the file's content), and provenance (`producedByRunId`,
+> `taskId`, `createdBy`, timestamps). Treat it exactly like `archive/`: **the shell
+> is its single writer — never hand-author, edit, or "fix" it, and don't commit a
+> change to it yourself.** The `fused` CLI has no command or UDF that writes it, by
+> design. Editing a widget/UDF file leaves that artifact's `version` (and review
+> state) in the manifest **stale**; that is expected and **self-heals on the app
+> side** — new CLI-authored files are picked up by the app's catalog auto-adopt, and
+> edits to existing records re-hash on the next app publish. You don't need to read
+> it either: `get_project_context` already surfaces the published-artifact metadata
+> derived from it, so orient from the context packet, not from the raw manifest.
+
 > **Hard-delete a whole project: `fused project delete <name>`.** Distinct from
 > the app's soft-delete `archive/`, this removes the project from the workspace:
 > `git rm -rf -- <name>` + a `--no-verify` commit, then cleans gitignored residue

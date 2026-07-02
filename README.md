@@ -1,8 +1,10 @@
 # flow-skills
 
-A self-contained [Claude Code](https://claude.com/claude-code) plugin for working with **Fused** — end-to-end data work on cloud-native datasets via MCP and CLI. It bundles the Fused `_core` management skills together with usage skills that take you from a fresh install to a running project and its widget UI, with no other repo required.
+A [Claude Code](https://claude.com/claude-code) plugin bundling the Fused **`_core` management skills** — the ones that read and write the Fused App state store (tasks, runs, feedback cards, secrets, the agent roster, artifact chats).
 
-These skills are written to **drive the `fused` CLI** from an agent (Claude Code). They are not consumed by the Fused app/UI.
+These skills drive the `_core` workspace UDFs — the App state store at `~/.openfused/app/state.json` — over the local execution layer started with `fused dev serve`. Reads go through SQL (`/api/exec/sql`), writes through UDFs (`/api/exec/udf`); each skill documents its own access pattern and is usable on its own.
+
+> Driving the `fused` CLI for setup, running code, and building projects/widgets lives in the **`agent-core`** plugin in [`fusedio/skills`](https://github.com/fusedio/skills). This repo is management-state only.
 
 ## Install
 
@@ -14,40 +16,25 @@ claude --plugin-dir /path/to/flow-skills
 
 The manifest at [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json) points at the [`skills/`](skills/) directory (`"skills": "./skills"`), so every skill below loads at once. Each skill is also self-contained and usable on its own.
 
-## Where to start
+For the CLI-driving usage skills (setup, infra, projects, execute, verify, storage, widgets, feedback), also load the companion `agent-core` plugin alongside this one:
 
-- **Set up Fused** → [`fused-setup`](skills/fused-setup/) (then [`fused-infra`](skills/fused-infra/) to provision resources).
-- **Build a project and get its widget UI** → [`fused-projects`](skills/fused-projects/) → [`fused-widgets`](skills/fused-widgets/) → [`fused-feedback`](skills/fused-feedback/) for approval gates.
-- **Not sure which skill?** Load [`fused-guide`](skills/fused-guide/) — it routes your goal to the right skill.
+```sh
+git clone https://github.com/fusedio/skills
+claude --plugin-dir /path/to/flow-skills --plugin-dir /path/to/skills/agent-core
+```
 
 ## Skills
 
-### Usage — setting up and building with Fused
-
 | Skill | Purpose |
 |---|---|
-| [`fused-guide`](skills/fused-guide/) | Entry-point router — maps a goal (set up / run code / build a widget) to the right skill. |
-| [`fused-setup`](skills/fused-setup/) | Install and set up Fused for the first time — AWS credential checks, install, provision, verify. |
-| [`fused-infra`](skills/fused-infra/) | Reference for the infrastructure Fused manages (AWS: IAM, Lambda, ECR, S3; local: data dirs + venvs) — what exists, why, and when it changes. |
-| [`fused-cli`](skills/fused-cli/) | The `fused` CLI reference — environments, file storage, secrets, code execution, infra commands. |
-| [`fused-projects`](skills/fused-projects/) | The canonical end-to-end guide — pick an env, create a project, decompose into UDFs, author specs + code, validate, run/preview, deploy. |
-| [`fused-execute`](skills/fused-execute/) | Best practices for running code through `execute_code` — structuring code, choosing a data library, handling results, writing outputs. |
-| [`fused-verify`](skills/fused-verify/) | Security scanning, testing, and correctness validation (`verify_code`, `test_code`, audit log, spec checks). |
-| [`fused-storage`](skills/fused-storage/) | Storage + secrets MCP tools — inspect cloud-native datasets and manage secrets. |
-| [`fused-widgets`](skills/fused-widgets/) | Author and preview JSON-UI widgets as a project's response — the compute→visualize pattern and the surfaces that render them. |
-| [`fused-feedback`](skills/fused-feedback/) | Show the human a real browser UI for questions, approvals, and plan reviews via `fused widget open` / parley. |
-
-### Management (`_core`)
-
-These drive the Fused `_core` workspace UDFs — the App state store (tasks, runs, feedback, secrets, agents) — over the local execution layer started with `fused dev serve`.
-
-| Skill | Purpose |
-|---|---|
-| [`task-management`](skills/task-management/) | Read, create, assign, and re-status tasks; render the task-board widget. |
+| [`task-management`](skills/task-management/) | Read, create, assign, and re-status tasks and their comments; render the standalone task-board widget. |
 | [`run-management`](skills/run-management/) | Read and write agent run records and per-run transcripts. |
 | [`feedback-management`](skills/feedback-management/) | Read and write interaction cards — the system of record for HITL decisions. |
 | [`secrets-management`](skills/secrets-management/) | Get, put, list, and delete secrets in the local Fernet-encrypted store. |
 | [`agents-management`](skills/agents-management/) | Create, read, update, delete, clone, and reset agent-roster entries. |
+| [`artifact-chat-management`](skills/artifact-chat-management/) | Create and update artifact chat threads and their messages/transcripts. |
+
+Each skill is a Fused `_core` project: a set of UDFs under `scripts/<op>/` (each with a `main.py` + `spec.md`), an `openfused.toml` that registers them, and — where relevant — a shipped widget under `widgets/`. See any skill's `SKILL.md` for its operations and the read/write access pattern.
 
 ## Customizing & contributing
 

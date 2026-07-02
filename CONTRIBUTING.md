@@ -20,10 +20,9 @@ there:
   Start from a copy of the repo skill if you like, give it a new `name`, and
   evolve it freely. Load it alongside this plugin.
 - **A new Fused project** — if you're adding domain UDFs or a custom
-  task/run/widget flow, create a project in your environment (see
-  `fused-projects`) rather than editing the `_core` skills here. The `_core`
-  management skills are the shared substrate; your behavior belongs in your own
-  project on top of them.
+  task/run/widget flow, create a project in your own environment rather than
+  editing the `_core` skills here. The `_core` management skills are the shared
+  substrate; your behavior belongs in your own project on top of them.
 
 Rule of thumb: **if someone else loading this plugin would be surprised by your
 change, it belongs in your workspace, not in the repo skill.**
@@ -55,10 +54,10 @@ them out of your private fork and send them here.
 ## Skill invocation
 
 The `_core` management skills (`task-management`, `run-management`,
-`feedback-management`, `secrets-management`, `agents-management`) carry
-`disable-model-invocation: true` in their frontmatter — they are meant to be
-invoked **explicitly** (e.g. `/flow-skills:task-management`), not auto-triggered
-by the model. The `openfused-*` usage skills stay model-invokable.
+`feedback-management`, `secrets-management`, `agents-management`,
+`artifact-chat-management`) carry `disable-model-invocation: true` in their
+frontmatter — they are meant to be invoked **explicitly** (e.g.
+`/flow-skills:task-management`), not auto-triggered by the model.
 
 > **Known caveat:** as of the current Claude Code release, `disable-model-invocation`
 > is **silently ignored for plugin skills** (the loader hardcodes plugin skills to

@@ -16,8 +16,11 @@ you just need one decision and then to move on.
 | `fused widget push <file.json>` | Render this config on the parley page now (replaces the current view in place). | one line `{"rev":N,"viewers":M}` |
 | `fused widget watch` | Stream the human's events as NDJSON until stopped. | one JSON object per event |
 
-(`fused widget parley` just opens/prints the parley page URL; `fused
-widget agent` runs a built-in auto-responder — not needed for manual planning.)
+(`fused widget parley` just opens/prints the parley page URL. `fused widget agent`
+is the built-in **comment auto-responder** — it turns comments the human pins on a
+file-backed parley view into file edits + re-pushes; see *CLI-native comment
+feedback* in the parent SKILL. Not needed for the manual push→react planning loop
+below.)
 
 ## The workflow in Claude Code — watch + Monitor (active response)
 
@@ -99,14 +102,23 @@ press) and **`close`** (the human left the tab) — one JSON object per line:
 Termination: Ctrl-C → `{"event":"end","reason":"interrupted"}` (exit 130);
 `--timeout N` (0 = forever) → `{"event":"end","reason":"timeout"}` (exit 3).
 
-## Pushing — the three target forms
+## Pushing — the target forms
 
 `widget push` (and `widget open`) accept the same targets:
 
 - A **`.json` file path** — the usual choice for ad-hoc planning. Author it, push
-  it, edit it, push again.
+  it, edit it, push again. **File-backed**, so the comment loop (`widget agent`) can
+  edit it.
+- An **inline `-c/--config`** (`--config -` reads stdin) — no temp file, but
+  one-shot / not editable (`source` is null) unless you add `--source /abs/plan.json`
+  to point the edit anchor at a file you maintain.
 - A **saved-widget stem** owned by a project (`widget push sales_overview
-  --project <p>`) — when the view lives in a project's `widgets/`.
+  --project <p>`) — when the view lives in a project's `widgets/`. Resolves but is
+  **not** file-backed (not editable by the comment agent).
+- A **`.json` path with `--project-dir <project root>`** — resolves the widget's
+  `{{ref}}`s against the project's `scripts/` UDFs + `.venv` (`?projectDir=` mode)
+  **while staying file-backed**. The only push form that is both project-addressed
+  and editable → the entry point to feedback mode for a `scripts/`-backed widget.
 
 For static planning widgets (text + inputs + buttons), a plain `.json` file with
 no project is all you need.

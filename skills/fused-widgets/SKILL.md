@@ -522,6 +522,7 @@ by the interaction you need:
 |---|---|---|---|
 | **One-shot** feedback ("show this, tell me when done") | `widget open` | `fused widget open scripts/sales-board/main.json` | Blocks until the human submits/closes (or `--timeout`, default 600s); prints the final `$param` state as one JSON line to stdout |
 | **A standing / long-running widget** (push successive views, stream human events) | **parley** | `widget push <cfg>` + `widget watch` (or `widget agent`) | NDJSON event stream (`action`/`close`); the view persists on `/parley`, push a new one and keep watching. See [Long-running / standing widgets](#long-running--standing-widgets). |
+| **A comment-driven revise loop** (human pins comments on the widget; an agent edits the file) | **parley + `widget agent`** | `widget push <file.json>` (or `--project-dir <root>`) in one terminal, `widget agent` in another | The human comments on the file-backed parley page (no flow app); `widget agent` turns each comment into a file edit + re-push. See `fused-feedback` → *CLI-native comment feedback*. |
 | **The flow UI** (browse **saved dashboards**) — *separate tool, out of scope* | flow | `flow` (or `npx @fusedio/flow` once published) | Human-driven. **Only `widgets/<stem>.json` live-renders** — a `json` UDF shows as source. |
 | **A shareable URL** (stakeholder, no local server) | deploy | `fused udf deploy sales-board --project <p>` | A rendered widget URL (preview → promote to release) |
 
@@ -550,16 +551,22 @@ by the interaction you need:
     editable** (no durable file), so for an edit-and-refresh loop keep authoring a
     named `.json` and `open` its path. `widget push -c/--config` is the parley
     counterpart (no temp file; `--source PATH` sets the edit anchor).
-  - **`--project-dir PATH`** (only for `.json` file targets): pins `fused dev
-    serve`'s `?projectDir=` mode to a project directory so UDFs in `scripts/` and the project
-    `.venv` are available. **Pass this for almost any real project widget** — one
-    that references a UDF elsewhere in `scripts/` or a `{{_core.*}}` ref. Omitting
-    it leaves `open` in widget-dir (`?dir=`) mode, which sees **only** the `.py`
-    files sitting next to the widget file; a `{{ref}}` to anything else then fails
-    (often a misleading `unknown endpoint`/ValueError). Being *inside* the project
-    tree is **not** enough — the mode is set by this flag, not by file location
+  - **`--project-dir PATH`** (`.json`/`--config` targets only; on both `widget
+    open` **and** `widget push`): pins `fused dev serve`'s `?projectDir=` mode to a
+    project directory so UDFs in `scripts/` and the project `.venv` are available.
+    **Pass this for almost any real project widget** — one that references a UDF
+    elsewhere in `scripts/` or a `{{_core.*}}` ref. Omitting it leaves the surface in
+    widget-dir (`?dir=`) mode, which sees **only** the `.py` files sitting next to the
+    widget file; a `{{ref}}` to anything else then fails (often a misleading `unknown
+    endpoint`/ValueError). Being *inside* the project tree is **not** enough — the mode
+    is set by this flag, not by file location
     (see [Pick the right addressing mode](#pick-the-right-addressing-mode)).
-    Mutually exclusive with `--project`.
+    Mutually exclusive with `--project`. **On `push`, it is the entry point to
+    feedback mode:** a `.json` path pushed `--project-dir` resolves against the
+    project *and* stays file-backed, so the parley comment loop works on a
+    `scripts/`-backed widget — the only push form that is both project-addressed and
+    editable (a `{project, stem}` push resolves but is not editable). See
+    `fused-feedback` → *CLI-native comment feedback*.
 - **parley** (`widget push`/`watch`/`parley`/`agent`) is the standing
   agent↔human channel — successive views land on one persistent page and the
   human's events stream back as NDJSON. Use it for iterative refinement. Details

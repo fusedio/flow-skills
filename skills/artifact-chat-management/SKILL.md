@@ -1,6 +1,6 @@
 ---
 name: artifact-chat-management
-description: Read and write the durable per-artifact chat store (records + per-chat NDJSON transcripts) in the Fused App store. The cross-agent-visible system of record for artifact chats — the strictly read-only conversation attached to a widget / UDF / reference. Use when inspecting or persisting artifact-chat state, or — from ANY agent — to learn what users have asked about an artifact.
+description: Read and write the durable per-artifact chat store (records + per-chat NDJSON transcripts) in the Fused App store. The cross-agent-visible system of record for artifact chats — the strictly read-only conversation attached to a widget / UDF / reference / project asset. Use when inspecting or persisting artifact-chat state, or — from ANY agent — to learn what users have asked about an artifact.
 disable-model-invocation: true
 ---
 
@@ -16,7 +16,8 @@ disable-model-invocation: true
 The App artifact-chat store exposed as live UDFs — the **durable, cross-agent
 system of record for artifact chats** (spec/artifact-chat/overview.md §3, D5). A
 chat is the strictly read-only conversation attached to ONE artifact (a widget, a
-UDF, or a reference). Reads and writes `~/.openfused/app/state/artifactChats.json`
+UDF, a reference, or a project asset — a data file such as
+`assets/sales.parquet`). Reads and writes `~/.openfused/app/state/artifactChats.json`
 (chat records) and reads `~/.openfused/app/artifact-chats/<chatId>.ndjson`
 (per-chat transcripts). These UDFs own that local store; an agent drives them over
 the local execution layer started with `fused dev serve`.
@@ -111,6 +112,9 @@ curl -s -X POST "$ORIGIN/api/exec/sql?t=$TOKEN&workspace=_core&project=artifact-
 # get / transcript / writes — POST to the UDF endpoint (single-record or chat-scoped)
 curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=artifact-chat-management" \
   -d '{"udf": "get", "overrides": {"project": "my-project", "artifact_type": "widget", "artifact_stem": "sales"}}'
+# an asset chat's stem is the asset's project-relative path, sent verbatim
+curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=artifact-chat-management" \
+  -d '{"udf": "get", "overrides": {"project": "my-project", "artifact_type": "asset", "artifact_stem": "assets/sales.parquet"}}'
 curl -s -X POST "$ORIGIN/api/exec/udf?t=$TOKEN&workspace=_core&project=artifact-chat-management" \
   -d '{"udf": "transcript", "overrides": {"chat_id": "chat_…"}}'
 ```
@@ -147,12 +151,22 @@ The 9-field camelCase record `read`/`get` return and the write UDFs produce
 (spec/artifact-chat/storage.md §1; mirrors the `RunRecord` shape/discipline):
 
 `id` (`chat_<hex>`, caller-supplied at create), `project`, `artifactType`
-(`widget` / `udf` / `reference`), `artifactStem` (widget stem / udf name /
-reference name), `title` (str | null — optional human label, null until set),
-`createdAt` (ISO, at create), `lastActivityAt` (ISO, bumped on each message),
-`messageCount` (int), `sessionKey` (agentbridge resume key for the Claude Code
-session). The `(project, artifactType, artifactStem)` triple is the find-or-create
-key (D6, one chat per artifact).
+(`widget` / `udf` / `reference` / `asset`), `artifactStem` (widget stem / udf name /
+reference name / asset path), `title` (str | null — optional human label, null
+until set), `createdAt` (ISO, at create), `lastActivityAt` (ISO, bumped on each
+message), `messageCount` (int), `sessionKey` (agentbridge resume key for the
+Claude Code session). The `(project, artifactType, artifactStem)` triple is the
+find-or-create key (D6, one chat per artifact).
+
+**Stem semantics.** The store treats `artifactType` and `artifactStem` as opaque
+exact-match strings — the type union above is the documented contract, not a
+runtime check (same accept-verbatim posture as every other write: the app gates
+legality before calling). An **asset** chat's stem is the asset's
+project-relative path, e.g. `assets/sales.parquet` — slashes and dots included,
+sent verbatim by the app with no store-side normalization. Path-shaped stems are
+safe: the stem never becomes a filename (transcripts key on `chat_id` only).
+Because the triple IS the chat's identity, renaming or moving an asset detaches
+its chat — the same posture as renaming a widget stem (D6).
 
 ## Operations
 

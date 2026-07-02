@@ -20,9 +20,12 @@ id : str
 project : str
     The artifact's project.
 artifact_type : str
-    ``"widget"`` / ``"udf"`` / ``"reference"``.
+    ``"widget"`` / ``"udf"`` / ``"reference"`` / ``"asset"`` (documented union —
+    stored verbatim, no runtime validation; the app gates legality).
 artifact_stem : str
-    The widget stem / udf name / reference name.
+    The widget stem / udf name / reference name / asset path (project-relative,
+    e.g. ``assets/sales.parquet``). Stored verbatim — no normalization; the stem
+    never becomes a filename (transcripts key on the chat id).
 session_key : str
     The agentbridge resume key (Claude Code session) for this chat lane.
 app_dir : str
@@ -183,8 +186,8 @@ def create(
     Args:
         id: the chat id (``chat_<hex>``); supplied by the caller, never minted here.
         project: the artifact's project.
-        artifact_type: ``widget`` / ``udf`` / ``reference``.
-        artifact_stem: the widget stem / udf name / reference name.
+        artifact_type: ``widget`` / ``udf`` / ``reference`` / ``asset`` (stored verbatim).
+        artifact_stem: the widget stem / udf name / reference name / asset path (verbatim).
         session_key: the agentbridge resume key (Claude Code session).
         app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """

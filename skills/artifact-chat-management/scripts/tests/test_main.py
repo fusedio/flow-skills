@@ -10,7 +10,10 @@ Covers, against a temp ``app_dir``:
   - ``transcript`` tolerates a missing dir/file (→ ``[]``), confines a
     traversal-shaped ``chat_id`` (→ ``[]``), and skips a torn trailing line;
   - the whole-document RMW preserves every OTHER collection's file;
-  - ``get`` / ``read`` filtering by project + artifact ref.
+  - ``get`` / ``read`` filtering by project + artifact ref;
+  - the ``asset`` artifact type: path-shaped stems (``assets/sales.parquet``) are
+    opaque exact-match strings — round-trip verbatim, idempotent on the exact
+    path, no cross-type collision, and survive ``clear``.
 """
 
 import json
@@ -434,3 +437,73 @@ def test_read_filters_by_project_and_ref(load_udf, tmp_path, monkeypatch):
 def test_read_empty_store_returns_empty(load_udf, tmp_path, monkeypatch):
     monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
     assert load_udf("read", "read")(app_dir=str(tmp_path)) == []
+
+
+# --- asset artifact type: path stems are opaque exact-match strings ---------
+
+
+def test_create_asset_path_stem_roundtrips_verbatim(load_udf, tmp_path, monkeypatch):
+    """An asset chat's stem is the asset's project-relative path — slashes and
+    dots included — stored verbatim (no normalization) and returned as-is."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    rec = _create(
+        load_udf, tmp_path, artifact_type="asset", artifact_stem="assets/sales.parquet"
+    )
+    assert rec["artifactType"] == "asset"
+    assert rec["artifactStem"] == "assets/sales.parquet"
+    # persisted verbatim, not just echoed
+    persisted = load_udf("read", "read")(app_dir=str(tmp_path))[0]
+    assert persisted["artifactType"] == "asset"
+    assert persisted["artifactStem"] == "assets/sales.parquet"
+
+
+def test_create_asset_is_idempotent_on_exact_path(load_udf, tmp_path, monkeypatch):
+    """find-or-create keys on the exact path string (D6); a second create on the
+    same path returns the existing record, while a different path (a rename/move)
+    is a different identity — the old chat is detached, a new one is minted."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    first = _create(
+        load_udf, tmp_path, id="chat_first",
+        artifact_type="asset", artifact_stem="assets/sales.parquet",
+    )
+    second = _create(
+        load_udf, tmp_path, id="chat_second",
+        artifact_type="asset", artifact_stem="assets/sales.parquet",
+    )
+    assert second["id"] == first["id"] == "chat_first"
+    # a moved asset is a new ref: the store does not follow renames
+    moved = _create(
+        load_udf, tmp_path, id="chat_moved",
+        artifact_type="asset", artifact_stem="assets/archive/sales.parquet",
+    )
+    assert moved["id"] == "chat_moved"
+    assert len(load_udf("read", "read")(app_dir=str(tmp_path))) == 2
+
+
+def test_asset_stem_does_not_collide_across_types(load_udf, tmp_path, monkeypatch):
+    """The type is part of the triple: a widget chat and an asset chat sharing the
+    same stem string are distinct chats, and get/read scope by type."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    _create(load_udf, tmp_path, id="chat_w", artifact_type="widget", artifact_stem="assets/sales.parquet")
+    _create(load_udf, tmp_path, id="chat_a", artifact_type="asset", artifact_stem="assets/sales.parquet")
+
+    got = load_udf("get", "get")(
+        project="p", artifact_type="asset", artifact_stem="assets/sales.parquet",
+        app_dir=str(tmp_path),
+    )
+    assert got["id"] == "chat_a"
+    scoped = load_udf("read", "read")(
+        project="p", artifact_type="asset", artifact_stem="assets/sales.parquet",
+        app_dir=str(tmp_path),
+    )
+    assert {r["id"] for r in scoped} == {"chat_a"}
+
+
+def test_clear_keeps_asset_ref(load_udf, tmp_path, monkeypatch):
+    """clear resets the chat but KEEPS the asset ref — type + path stem verbatim."""
+    monkeypatch.delenv("OPENFUSED_APP_DIR_STATE", raising=False)
+    _create(load_udf, tmp_path, artifact_type="asset", artifact_stem="assets/sales.parquet")
+    reset = load_udf("clear", "clear")(chat_id="chat_1", app_dir=str(tmp_path))
+    assert reset["messageCount"] == 0
+    assert reset["artifactType"] == "asset"
+    assert reset["artifactStem"] == "assets/sales.parquet"

@@ -10,9 +10,10 @@ Params
 project : str
     The artifact's project.
 artifact_type : str
-    ``"widget"`` / ``"udf"`` / ``"reference"``.
+    ``"widget"`` / ``"udf"`` / ``"reference"`` / ``"asset"``.
 artifact_stem : str
-    The widget stem / udf name / reference name.
+    The widget stem / udf name / reference name / asset path (project-relative,
+    e.g. ``assets/sales.parquet``). Matched verbatim — no normalization.
 app_dir : str
     Storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
 
@@ -160,8 +161,8 @@ def get(
 
     Args:
         project: the artifact's project.
-        artifact_type: ``widget`` / ``udf`` / ``reference``.
-        artifact_stem: the widget stem / udf name / reference name.
+        artifact_type: ``widget`` / ``udf`` / ``reference`` / ``asset``.
+        artifact_stem: the widget stem / udf name / reference name / asset path (verbatim).
         app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
     if app_dir:

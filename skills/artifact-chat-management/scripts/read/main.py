@@ -10,11 +10,12 @@ project : str
     Filter to one project's chats (matched against the camelCase ``project``
     field). Empty string (default) returns all chats across all projects.
 artifact_type : str
-    Optional further scope — ``"widget"`` / ``"udf"`` / ``"reference"`` — applied
-    only when non-empty.
+    Optional further scope — ``"widget"`` / ``"udf"`` / ``"reference"`` /
+    ``"asset"`` — applied only when non-empty (exact string match, not enforced).
 artifact_stem : str
-    Optional further scope — the widget stem / udf name / reference name — applied
-    only when non-empty.
+    Optional further scope — the widget stem / udf name / reference name / asset
+    path (project-relative, e.g. ``assets/sales.parquet``) — applied only when
+    non-empty, matched verbatim.
 app_dir : str
     Storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
 
@@ -162,8 +163,8 @@ def read(
 
     Args:
         project: filter to one project's chats; empty returns all projects.
-        artifact_type: optional ``widget``/``udf``/``reference`` scope (applied when non-empty).
-        artifact_stem: optional artifact-name scope (applied when non-empty).
+        artifact_type: optional ``widget``/``udf``/``reference``/``asset`` scope (applied when non-empty).
+        artifact_stem: optional artifact-name/path scope, matched verbatim (applied when non-empty).
         app_dir: storage location override (precedence over OPENFUSED_APP_DIR_STATE / default).
     """
     if app_dir:

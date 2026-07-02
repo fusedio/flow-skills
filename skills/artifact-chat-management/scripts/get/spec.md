@@ -8,6 +8,12 @@ Returns the single `ArtifactChatRecord` whose `(project, artifactType,
 artifactStem)` triple matches the params — the **D6 find half** (one chat per
 artifact). Returns `null` when no chat exists for the ref. **Cross-agent read.**
 
+The match is exact string equality on all three params (`artifact_type` is one of
+`widget` / `udf` / `reference` / `asset`). An asset chat's stem is the asset's
+project-relative path (e.g. `artifact_stem: "assets/sales.parquet"`), passed
+verbatim — no normalization; a renamed/moved asset therefore misses (its chat is
+detached, D6).
+
 Because the result is a single record (not tabular), prefer the UDF endpoint:
 
 ```

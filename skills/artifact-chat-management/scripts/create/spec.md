@@ -10,8 +10,8 @@ existing one for the ref unchanged. **Idempotent find-or-create on
 |---|---|---|
 | `id` | `""` | The chat id (`chat_<hex>`); **caller-supplied**, never minted here. Used only on create. |
 | `project` | `""` | The artifact's project |
-| `artifact_type` | `""` | `widget` / `udf` / `reference` |
-| `artifact_stem` | `""` | widget stem / udf name / reference name |
+| `artifact_type` | `""` | `widget` / `udf` / `reference` / `asset` (documented union — stored verbatim, no runtime validation; the app gates legality) |
+| `artifact_stem` | `""` | widget stem / udf name / reference name / asset path (project-relative, e.g. `assets/sales.parquet`, stored verbatim — no normalization) |
 | `session_key` | `""` | agentbridge resume key (Claude Code session) |
 
 The id is caller-supplied because the app mints `chat_<hex>` before persisting — it

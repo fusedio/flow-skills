@@ -268,6 +268,52 @@ signal; `close` is "stepped away," not "done." The Monitor stays armed across
 pushes — `TaskStop` it when the collaboration ends. Full loop:
 **[references/parley.md](references/parley.md)**.
 
+## CLI-native comment feedback — `widget agent`
+
+The parley also carries a **comment loop with no flow app** — two terminals and a
+browser. The human pins comments directly onto the widget on the parley page, and
+`fused widget agent` turns each comment into a **file edit** and re-pushes the
+updated view. Use it when the human's feedback is best expressed *on* the widget
+("this axis should be log", "drop this column", "make this the headline number")
+rather than as a form submit.
+
+```bash
+# terminal 1 — serve a file-backed widget onto the parley (opens the page)
+fused widget push /abs/path/dashboard.json --port 4477
+# ...or for a widget whose data comes from a project's scripts/ UDFs (e.g. {{session_cost}}):
+fused widget push /abs/path/dashboard.json --project-dir /abs/path/to/project --port 4477
+
+# terminal 2 — turn the human's comments into file edits (needs `claude` on PATH)
+fused widget agent --port 4477
+```
+
+On the page the human presses **`C`** (or clicks the bottom-right comment **FAB**),
+pins a comment to a node, and `widget agent` spawns a `claude -p` worker per open
+comment, edits the backing `.json`, re-pushes so the widget updates in place, and
+marks the comment resolved. Workers run in parallel across disjoint nodes and
+serialize on the same/nested node; the agent is the **single writer** of the file.
+
+**The editability gate — the view must be file-backed.** Comment authoring is
+enabled **only when the pushed view has a `source`** (mirrors `status.source`):
+
+| Push form | `source` | Comment authoring |
+|---|---|---|
+| A **`.json` file path** (`push /abs/plan.json`) | the file | **on** — agent edits that file |
+| `--config --source /abs/plan.json` | the declared file | **on** — agent edits that file |
+| `--project-dir` on a `.json` path | the file | **on**, *and* project UDFs resolve (`?projectDir=` mode) |
+| Plain inline `--config` (no `--source`) | `null` | **off** — page shows a "not file-backed, comments won't be actioned" note |
+| A `{project, stem}` push | `null` | **off** — resolves but is not editable |
+
+So `--project-dir` on a `.json` path is the **only** push form that is both
+project-addressed (resolves `scripts/` UDFs + `{{endpoint}}` refs under the project
+`.venv`) **and** editable — the entry point to feedback mode for a real project
+widget. The agent reads `status.projectDir` and **echoes it on every re-push**, so a
+`--project-dir` view keeps resolving in `?projectDir=` mode across comment edits
+(without it the re-push would fall back to flat `?dir=` and break the project's UDF
+refs). The `widget agent` verb is separate from `widget watch`/manual planning —
+reach for `agent` when you want comments actioned automatically; drive the parley
+by hand (§ above) when you're authoring successive views yourself.
+
 ## Recipes
 
 Copy-paste templates for the common asks — single/multi choice, free text,

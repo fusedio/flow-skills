@@ -1201,16 +1201,19 @@ A page **refresh counts as a close** (the browser fires the same event); a crash
 
 **Driving it from an agent (open optimistically, poll — never blind-`sleep`).** Because the command blocks until the human settles, an agent that needs the URL should start it with `run_in_background` and read the URL off **stderr** — it prints as a `widget page: <url>` line there (stdout is reserved for the final terminal-event JSON), so `Monitor` stderr for `widget page:` until it appears with a timeout ceiling — do **not** `sleep N; cat`. Run `fused widget verify` **concurrently** rather than serialising verify → open; the open is optimistic and the headless check gates the data in parallel. See `fused-widgets` → *Optimistic open + background verify* for the full rationale.
 
-### The parley — a standing channel (`widget push` / `widget watch` / `widget parley`)
+### The parley — a standing channel (`widget push` / `widget watch` / `widget parley` / `widget agent`)
 
 Unlike a session (one-shot: tab closes, command exits), the **parley** never settles: the agent pushes successive views into one persistent page at `<origin>/parley`, and the human's events stream on a standing log. One parley per widget-host, in-memory. Like `open`, the commands boot-or-reuse the widget-host (no separate server to start).
 
 ```sh
 fused widget push sales_overview        # push a saved widget into the parley page
 fused widget push ./draft.json --title "Draft"   # any config file works too
+fused widget push ./dash.json --project-dir ~/.openfused/workspaces/default/cc-open   # scripts/-backed + editable
+fused widget push -c "$CONFIG" --source /abs/plan.json   # inline config, but anchor edits at a file
 fused widget watch                      # stream the human's actions (NDJSON, runs until stopped)
 fused widget watch --verbose            # ...also every per-input params change (noisy)
 fused widget parley                     # print/open the parley page URL
+fused widget agent                      # action comments the human pins on the page (needs `claude` on PATH)
 ```
 
 **Agent workflow**: run `widget watch` as a **background process** for the life of the collaboration, then `widget push` once per view — react to what streams in, push the next view, repeat. The open tab re-renders in place on every push (params reset to the new config's defaults).
@@ -1219,11 +1222,16 @@ By default `watch` emits only **`action`** and **`close`** events — the low-vo
 
 | Command | Key options | stdout | Exit |
 |---|---|---|---|
-| `widget push TARGET` | `--dir .`, `--title`, `--open/--no-open` (default `--open`: opens the parley page only when no tab is watching — `viewers == 0`) | exactly one line `{"rev":N,"viewers":M}` | `0`; failures: stderr only, `1` |
+| `widget push TARGET` | `-c/--config` (inline; `-` = stdin), `--source PATH` (with `--config`: the file the config came from → the edit anchor), `--project`, `--project-dir PATH` (`.json`/`--config` only; keeps the view file-backed → editable), `--title`, `--open/--no-open` (default `--open`: opens the parley page only when no tab is watching — `viewers == 0`) | exactly one line `{"rev":N,"viewers":M}` | `0`; failures: stderr only, `1` |
 | `widget watch` | `--dir .`, `--from latest\|all\|<seq>` (default `latest`), `--timeout 0` (= forever), `--verbose` (also emit `params`; default off) | NDJSON per event: `{"event":"action"\|"close"\|"params","seq":N,"rev":R[,"action"][,"terminal"],"params":{…}}`; final `{"event":"end","reason":"interrupted"\|"timeout"}` | Ctrl-C `130`, timeout `3`, server lost `1` (no end line) |
 | `widget parley` | `--dir .`, `--no-open` | none (URL on stderr) | `0` |
+| `widget agent` | `--port`, `--model <m>` | logs on stderr; foreground until Ctrl-C | `0` |
 
 A `close` event is a presence signal, not an ending — the human left the tab; the parley continues; reopening the page resumes reporting.
+
+**`--project-dir` on `push` (feedback-mode entry point).** Path-address a `.json`/`--config` push against a project directory (local backend only, mutually exclusive with `--project`): the push resolves via `fused dev serve`'s `?projectDir=` mode (UDFs from `<PATH>/scripts/`, run under its `.venv`) **while the view stays file-backed** — so a widget whose data comes from a project's `scripts/` UDFs (endpoint refs like `{{session_cost}}`) resolves *and* keeps the parley comment loop live. It is the **only** push form that is both project-addressed and editable: a `{project, stem}` push resolves but is not file-backed, and a bare `--config --project-dir` (no `--source`) resolves the same way but stays one-shot/non-editable. Only valid for `.json`/`--config` targets (a saved-widget stem errors).
+
+**`widget agent` + the CLI-native comment loop.** With a file-backed view pushed (a `.json` path, `--config --source PATH`, or a `--project-dir` push), the parley page mounts the widget's **comment layer** — no flow app needed. The human enters comment mode (bottom-right comment FAB or the `C` key), pins a comment to a node, and it rides the existing debounced `params` reporter as the `__comments` param (no new transport). `fused widget agent` consumes those off `GET /api/parley/events`, spawns a `claude -p` worker per open comment (parallel across disjoint nodes, serialized on the same/nested node), applies the resulting patch to the source config as its single writer, and re-pushes — marking each comment in-progress → resolved. It reads `status.projectDir` and **echoes it on every re-push**, so a `--project-dir` view keeps resolving in `?projectDir=` mode across agent updates. Editability gate: on a non-file-backed view (`status.source == null` — a plain inline `--config` or `{project, stem}` push) the page shows a short "not file-backed, comments won't be actioned" note and suppresses authoring (it still renders the widget). See `fused-feedback` → *CLI-native comment feedback* for the two-terminal loop.
 
 ### Verify a widget resolves, headless (`widget verify`)
 

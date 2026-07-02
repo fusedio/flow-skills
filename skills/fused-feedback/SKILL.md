@@ -284,7 +284,8 @@ fused widget push /abs/path/dashboard.json --port 4477
 fused widget push /abs/path/dashboard.json --project-dir /abs/path/to/project --port 4477
 
 # terminal 2 — turn the human's comments into file edits (needs `claude` on PATH)
-fused widget agent --port 4477
+# START THIS BEFORE the human comments — it acts on the live event stream, not a replay.
+fused widget agent --port 4477            # --model <m> overrides the worker model (default claude-sonnet-4-6)
 ```
 
 On the page the human presses **`C`** (or clicks the bottom-right comment **FAB**),
@@ -292,6 +293,22 @@ pins a comment to a node, and `widget agent` spawns a `claude -p` worker per ope
 comment, edits the backing `.json`, re-pushes so the widget updates in place, and
 marks the comment resolved. Workers run in parallel across disjoint nodes and
 serialize on the same/nested node; the agent is the **single writer** of the file.
+
+**Start `agent` before the human comments — ordering matters.** `widget agent`
+reacts to the parley's **live** SSE stream ("the instant a comment appears"); it
+does **not** replay comments pinned while it wasn't running. So the sequence is
+`push` the view → start `widget agent` → *then* tell the human to comment. A
+comment dropped before the agent is up is not actioned — nudge the human to re-pin
+it (or restart the loop) rather than waiting.
+
+**Lifecycle — it's a foreground long-runner, not a one-shot.** Unlike `widget
+open` (blocks, prints one JSON line, exits) or `widget verify` (one-shot data
+envelope), `widget agent` **boots/reuses the widget-host and runs in the
+foreground until Ctrl-C**. It has **no stdout answer contract** — its "output" is
+the side effects you watch in the browser: comments flip to in-progress, the file
+is edited, the view re-pushes (~1 s) and re-resolves, the comment resolves
+(progress logs go to stderr). Run it in its own terminal (or a background task)
+for the life of the comment session and stop it with Ctrl-C when done.
 
 **The editability gate — the view must be file-backed.** Comment authoring is
 enabled **only when the pushed view has a `source`** (mirrors `status.source`):
